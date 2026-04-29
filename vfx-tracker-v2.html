@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VFX Shot Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Epilogue:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c0e;--s1:#141416;--s2:#1a1a1d;--s3:#222226;--s4:#2a2a2f;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--border3:rgba(255,255,255,0.22);
+  --text:#eeeee8;--muted:#7a7a76;--dim:#3e3e3a;
+  --accent:#e8961e;--accent-d:#c07818;--accent-bg:rgba(232,150,30,0.1);
+  --green:#4fa84a;--green-bg:rgba(79,168,74,0.1);
+  --blue:#4a8fd8;--blue-bg:rgba(74,143,216,0.1);
+  --red:#d44a3a;--red-bg:rgba(212,74,58,0.1);
+  --font:'Epilogue',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --r:10px;--rsm:6px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;}
+input,button,select{font-family:inherit;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px;}
+::selection{background:rgba(232,150,30,0.25);}
+.app{display:grid;grid-template-rows:52px 1fr;height:100vh;overflow:hidden;}
+.topbar{display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border);gap:12px;}
+.logo{font-size:14px;font-weight:800;letter-spacing:0.05em;}
+.logo em{color:var(--accent);font-style:normal;}
+.top-steps{display:flex;align-items:center;gap:2px;margin-left:20px;}
+.tstep{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;color:var(--dim);transition:all .2s;}
+.tstep.active{color:var(--accent);background:var(--accent-bg);}
+.tstep.done{color:var(--muted);}
+.tstep-n{width:17px;height:17px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;}
+.tstep.done .tstep-n{background:var(--green);border-color:var(--green);color:#fff;}
+.tstep.active .tstep-n{background:var(--accent);border-color:var(--accent);color:#000;}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.auth-pill{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+.auth-pill.out{background:var(--s3);color:var(--muted);}
+.auth-pill.in{background:var(--green-bg);color:var(--green);border:1px solid rgba(79,168,74,0.25);}
+.auth-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.main{overflow-y:auto;overflow-x:hidden;}
+.panel{max-width:900px;margin:0 auto;padding:28px 20px 80px;}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:14px;}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
+.card-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);}
+.btn{height:34px;padding:0 16px;border-radius:var(--rsm);border:1px solid var(--border2);background:transparent;color:var(--text);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover:not(:disabled){background:var(--s3);border-color:var(--border3);}
+.btn:active:not(:disabled){transform:scale(0.98);}
+.btn:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-accent{background:var(--accent);border-color:transparent;color:#000;font-weight:700;}
+.btn-accent:hover:not(:disabled){opacity:0.88;}
+.btn-sm{height:28px;padding:0 11px;font-size:11px;border-radius:5px;}
+.btn-ghost{border-color:transparent;color:var(--muted);}
+.btn-ghost:hover:not(:disabled){background:var(--s3);color:var(--text);border-color:var(--border);}
+.btn-row{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.field input[type=text]{width:100%;height:36px;padding:0 11px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .15s;}
+.field input[type=text]:focus{border-color:var(--accent);}
+.field input::placeholder{color:var(--dim);}
+.field-hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.6;}
+.field-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.setup-step{background:var(--s2);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;}
+.sn{font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--accent);margin-bottom:4px;}
+.st{font-size:12px;font-weight:700;margin-bottom:5px;}
+.sb{font-size:11px;color:var(--muted);line-height:1.7;}
+.sb code{font-family:var(--mono);font-size:10px;background:var(--s4);padding:1px 5px;border-radius:3px;color:var(--accent);}
+.sb a{color:var(--blue);}
+.dz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.dz{border:1.5px dashed var(--border2);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .15s;position:relative;}
+.dz:hover,.dz.over{border-color:var(--accent);background:var(--accent-bg);}
+.dz.filled{border-style:solid;border-color:var(--green);background:var(--green-bg);}
+.dz-icon{font-size:22px;margin-bottom:8px;}
+.dz-title{font-size:13px;font-weight:700;margin-bottom:2px;}
+.dz.filled .dz-title{color:var(--green);}
+.dz-sub{font-size:11px;color:var(--muted);}
+.dz-opt{position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;letter-spacing:0.06em;color:var(--dim);background:var(--s3);padding:1px 6px;border-radius:3px;}
+input[type=file]{display:none;}
+.sens-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:var(--rsm);margin-bottom:12px;}
+.sens-lbl{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;}
+input[type=range]{flex:1;height:4px;-webkit-appearance:none;background:var(--s4);border-radius:2px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;}
+.sens-val{font-size:12px;font-weight:700;font-family:var(--mono);color:var(--accent);min-width:28px;text-align:right;}
+.notice{padding:10px 13px;border-radius:var(--rsm);font-size:11px;line-height:1.7;margin-bottom:12px;}
+.nb{background:var(--blue-bg);border:1px solid rgba(74,143,216,0.2);color:#85b5e0;}
+.na{background:var(--accent-bg);border:1px solid rgba(232,150,30,0.2);color:#c8963a;}
+.shots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:10px;max-height:500px;overflow-y:auto;padding-right:2px;}
+.shot-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden;position:relative;}
+.shot-card:hover{border-color:var(--border2);}
+.shot-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);}
+.shot-id{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--text);}
+.shot-dur{font-size:10px;color:var(--muted);font-family:var(--mono);}
+.shot-frames{display:grid;grid-template-columns:1fr 1fr;}
+.fcell{position:relative;height:54px;background:#000;overflow:hidden;}
+.fcell img{width:100%;height:100%;object-fit:cover;display:block;}
+.flbl{position:absolute;bottom:3px;left:3px;font-size:8px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.6);font-family:var(--mono);}
+.fempty{height:54px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--dim);}
+.shot-del{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s;line-height:1;}
+.shot-card:hover .shot-del{opacity:1;}
+.shot-del:hover{background:var(--red);color:#fff;}
+.add-card{border:1.5px dashed var(--border2);border-radius:var(--rsm);min-height:112px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;transition:all .15s;color:var(--dim);font-size:11px;font-weight:600;}
+.add-card:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100;display:flex;align-items:center;justify-content:center;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:var(--r);padding:24px;width:580px;max-width:94vw;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:800;margin-bottom:3px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
+.scrub-vid{width:100%;height:196px;background:#000;border-radius:var(--rsm);object-fit:contain;display:block;}
+.scrub-bar{width:100%;margin-top:8px;cursor:pointer;}
+.scrub-time{font-size:10px;font-family:var(--mono);color:var(--muted);text-align:center;margin-top:4px;}
+.frame-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+.fp{background:var(--s2);border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden;text-align:center;}
+.fp img{width:100%;height:78px;object-fit:cover;display:block;}
+.fp-empty{height:78px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--dim);}
+.fp-lbl{font-size:10px;font-weight:700;color:var(--muted);padding:5px;border-top:1px solid var(--border);}
+.fp-btn{width:100%;padding:5px;border:none;background:var(--s3);color:var(--muted);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;border-top:1px solid var(--border);transition:all .15s;}
+.fp-btn:hover{background:var(--accent-bg);color:var(--accent);}
+.fp-btn.set{background:var(--green-bg);color:var(--green);}
+.prog-lbl{font-size:13px;font-weight:700;margin-bottom:5px;}
+.prog-det{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;}
+.prog-wrap{background:var(--s3);border-radius:99px;height:4px;overflow:hidden;margin-bottom:14px;}
+.prog-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#f5c040);transition:width .35s;}
+.log{background:#090909;border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;max-height:240px;overflow-y:auto;font-family:var(--mono);font-size:10.5px;}
+.ll{padding:1.5px 0;line-height:1.6;}
+.ll-ok{color:var(--green);}
+.ll-err{color:var(--red);}
+.ll-info{color:var(--blue);}
+.result-box{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--green-bg);border:1px solid rgba(79,168,74,0.25);border-radius:var(--r);margin-top:14px;}
+.result-box a{font-size:14px;font-weight:800;color:var(--green);text-decoration:none;}
+.result-box a:hover{text-decoration:underline;}
+.result-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
+.tag-green{background:var(--green-bg);color:var(--green);}
+.tag-amber{background:var(--accent-bg);color:var(--accent);}
+.mi{font-size:11px;color:var(--muted);}
+.mi strong{color:var(--text);font-weight:700;}
+.err-msg{padding:10px 12px;background:var(--red-bg);border:1px solid rgba(212,74,58,0.2);border-radius:var(--rsm);font-size:11px;color:#d88070;margin-top:10px;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+#hv{position:fixed;left:-9999px;top:-9999px;pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">VFX <em>TRACKER</em></div>
+    <div class="top-steps">
+      <div class="tstep active" id="ts1"><div class="tstep-n">1</div>Connect</div>
+      <div class="tstep" id="ts2"><div class="tstep-n">2</div>Project</div>
+      <div class="tstep" id="ts3"><div class="tstep-n">3</div>Review Shots</div>
+      <div class="tstep" id="ts4"><div class="tstep-n">4</div>Build Sheet</div>
+    </div>
+    <div class="top-r">
+      <div class="auth-pill out" id="auth-pill"><div class="auth-dot"></div><span id="auth-lbl">Not connected</span></div>
+      <button class="btn btn-accent btn-sm" id="btn-connect" onclick="saveAndAuth()">Connect Google</button>
+    </div>
+  </div>
+
+  <div class="main"><div class="panel">
+
+    <!-- STEP 1: Setup -->
+    <div class="card" id="sec-setup">
+      <div class="card-hdr"><div class="card-title">Google Cloud Setup — one-time per deployment</div></div>
+      <div class="notice nb">Your video <strong style="color:#a0c8f5">never leaves your machine.</strong> Only 200px-wide thumbnail frames are uploaded to your team's Google Drive. Completely free to run.</div>
+      <div class="setup-grid">
+        <div class="setup-step">
+          <div class="sn">STEP 01</div><div class="st">Create Google Cloud Project</div>
+          <div class="sb">Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → New Project. Name it <code>vfx-tracker</code>.</div>
+        </div>
+        <div class="setup-step">
+          <div class="sn">STEP 02</div><div class="st">Enable APIs</div>
+          <div class="sb">APIs &amp; Services → Library → enable <code>Google Drive API</code> and <code>Google Sheets API</code>.</div>
+        </div>
+        <div class="setup-step">
+          <div class="sn">STEP 03</div><div class="st">Create OAuth Client ID</div>
+          <div class="sb">Credentials → Create OAuth Client ID → <strong>Web Application</strong>. Add your hosting URL to <em>Authorized JavaScript Origins</em>. For local testing add <code>http://localhost:8080</code>.</div>
+        </div>
+        <div class="setup-step">
+          <div class="sn">STEP 04</div><div class="st">Paste Client ID below</div>
+          <div class="sb">Copy the ID ending in <code>.apps.googleusercontent.com</code>. To pre-fill for your whole team, put it in <code>HARDCODED_CLIENT_ID</code> in the script and redeploy.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>OAuth Client ID</label>
+        <input type="text" id="cid-input" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"/>
+        <div class="field-hint">Saved in your browser. Each team member pastes theirs once on first use.</div>
+      </div>
+      <div class="btn-row"><button class="btn btn-accent" onclick="saveAndAuth()">Save &amp; Connect Google →</button></div>
+      <div id="setup-err" class="err-msg" style="display:none;"></div>
+    </div>
+
+    <!-- STEP 2: Project + Upload -->
+    <div class="card" id="sec-project" style="display:none;">
+      <div class="card-hdr"><div class="card-title">Project Setup</div></div>
+      <div class="field-2">
+        <div class="field">
+          <label>Project Name</label>
+          <input type="text" id="proj-name" placeholder="e.g. Acme_Commercial_2026"/>
+          <div class="field-hint">Becomes the spreadsheet title and Drive folder name.</div>
+        </div>
+        <div class="field">
+          <label>Cut / Version Label</label>
+          <input type="text" id="cut-label" placeholder="e.g. VFX_CUT_v3"/>
+          <div class="field-hint">Becomes the sheet tab name. One tab per cut version.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="dz-grid">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Video File</div>
+          <div class="dz" id="dz-v" onclick="document.getElementById('fi-v').click()">
+            <div class="dz-icon">🎬</div><div class="dz-title">Drop video here</div>
+            <div class="dz-sub">mp4, mov, mxf — stays on your machine</div>
+          </div>
+          <input type="file" id="fi-v" accept="video/*">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Edit List <span style="font-weight:400;color:var(--dim)">(Optional)</span></div>
+          <div class="dz" id="dz-e" onclick="document.getElementById('fi-e').click()">
+            <div class="dz-opt">OPTIONAL</div>
+            <div class="dz-icon">📋</div><div class="dz-title">Drop EDL / XML here</div>
+            <div class="dz-sub">CMX 3600 or FCP XML. Skip for auto-detect.</div>
+          </div>
+          <input type="file" id="fi-e" accept=".edl,.xml,.txt">
+        </div>
+      </div>
+      <div id="sens-section" style="display:none;">
+        <div class="notice na">No EDL — using <strong>automatic cut detection.</strong> Adjust sensitivity then click Detect. Remove false positives and add missed shots on the next screen.</div>
+        <div class="sens-row">
+          <span class="sens-lbl">Detection Sensitivity</span>
+          <input type="range" id="sens" min="5" max="70" value="28" oninput="document.getElementById('sens-out').textContent=this.value">
+          <span class="sens-val" id="sens-out">28</span>
+        </div>
+        <div class="field-hint">Lower = more cuts detected (may include false positives). Higher = only obvious hard cuts.</div>
+      </div>
+      <div id="proj-err" class="err-msg" style="display:none;"></div>
+      <div class="btn-row">
+        <button class="btn btn-accent" id="btn-detect" disabled onclick="runDetection()">Detect Shots →</button>
+        <span class="mi" id="proj-hint">Upload a video to continue</span>
+      </div>
+    </div>
+
+    <!-- STEP 3: Review -->
+    <div class="card" id="sec-review" style="display:none;">
+      <div class="card-hdr">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="card-title">Shot Review</div>
+          <span class="tag tag-amber" id="shot-count-tag">0 shots</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-ghost" onclick="openAddModal()">+ Add missed shot</button>
+          <button class="btn btn-sm btn-ghost" id="btn-rerun" style="display:none;" onclick="rerunDetect()">↺ Re-detect</button>
+        </div>
+      </div>
+      <div class="notice nb" style="margin-bottom:12px;">Hover a card and click <strong style="color:#a0c8f5">✕</strong> to remove false positives. Use <strong style="color:#a0c8f5">+ Add missed shot</strong> to insert any missed cut. Shots are numbered SH0000, SH0010…</div>
+      <div class="shots-grid" id="shots-grid"></div>
+      <div id="review-err" class="err-msg" style="display:none;"></div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-accent" onclick="buildSheet()">Build Google Sheet →</button>
+        <span class="mi">Creates sheet &amp; uploads thumbnails to your Drive</span>
+      </div>
+    </div>
+
+    <!-- STEP 4: Building -->
+    <div class="card" id="sec-build" style="display:none;">
+      <div class="card-hdr"><div class="card-title">Building Sheet</div></div>
+      <div class="prog-lbl" id="build-msg">Initializing...</div>
+      <div class="prog-det" id="build-det"></div>
+      <div class="prog-wrap"><div class="prog-bar" id="build-bar" style="width:0%"></div></div>
+      <div class="log" id="build-log"></div>
+    </div>
+
+    <!-- Done -->
+    <div class="card" id="sec-done" style="display:none;">
+      <div class="card-hdr"><div class="card-title">Complete</div></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;" id="done-meta"></div>
+      <div class="result-box">
+        <div style="font-size:28px;">📊</div>
+        <div>
+          <a href="#" id="sheet-link" target="_blank">Open VFX Tracker</a>
+          <div class="result-meta" id="done-sub"></div>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn" onclick="addAnotherCut()">+ Add another cut (new tab)</button>
+        <button class="btn btn-ghost" onclick="location.reload()">New Project</button>
+      </div>
+    </div>
+
+    <div id="global-err" class="err-msg" style="display:none;"></div>
+  </div></div>
+</div>
+
+<!-- Add Shot Modal -->
+<div class="backdrop" id="modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title">Add Missed Shot</div>
+    <div class="modal-sub">Scrub the video to find the cut point. Set the IN frame (first frame of shot) and OUT frame (last frame of shot).</div>
+    <video class="scrub-vid" id="modal-vid" muted playsinline></video>
+    <input type="range" class="scrub-bar" id="scrub-bar" min="0" max="1000" value="0">
+    <div class="scrub-time" id="scrub-time">00:00:00</div>
+    <div class="frame-row">
+      <div class="fp">
+        <div class="fp-empty" id="fp-in-empty">No IN frame set</div>
+        <img id="fp-in-img" style="display:none;width:100%;height:78px;object-fit:cover;">
+        <div class="fp-lbl">IN Frame (first frame of shot)</div>
+        <button class="fp-btn" id="btn-set-in" onclick="setModalFrame('in')">Set IN at current position</button>
+      </div>
+      <div class="fp">
+        <div class="fp-empty" id="fp-out-empty">No OUT frame set</div>
+        <img id="fp-out-img" style="display:none;width:100%;height:78px;object-fit:cover;">
+        <div class="fp-lbl">OUT Frame (last frame of shot)</div>
+        <button class="fp-btn" id="btn-set-out" onclick="setModalFrame('out')">Set OUT at current position</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-accent" id="btn-add-shot" disabled onclick="confirmAddShot()">Add Shot</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<video id="hv" muted playsinline preload="metadata"></video>
+
+<script>
+// ── CONFIG: Hardcode your Client ID here to pre-fill for all team members ──
+const HARDCODED_CLIENT_ID = '';
+
+// ── COMP STATUS VALUES (from your screenshot) ──
+const COMP_STATUSES = [
+  'PENDING','IN PROGRESS','AWAITING FEEDBACK','REVISION INQUIRY',
+  'CANCELED','APPROVED','SHIPPED','SCREEN TRACKED','Needs Colored footage'
+];
+const ARTISTS = ['Jake','Jon','Simon'];
+
+// ── STATE ──
+const S = { token:null, clientId:null, videoFile:null, videoUrl:null, shots:[], ssId:null, folderId:null, projName:'', cutLabel:'' };
+const M = { inSec:null, outSec:null, inFrame:null, outFrame:null };
+
+// ── AUTH ──
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+
+function loadGIS(){
+  return new Promise(res=>{
+    if(window.google?.accounts){res();return;}
+    const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;document.head.appendChild(s);
+  });
+}
+
+function saveAndAuth(){
+  let cid=document.getElementById('cid-input').value.trim()||HARDCODED_CLIENT_ID;
+  if(!cid||!cid.includes('.apps.googleusercontent.com')){showErr('setup-err','Enter a valid Client ID ending in .apps.googleusercontent.com');return;}
+  S.clientId=cid; localStorage.setItem('vfx_cid',cid); doAuth();
+}
+
+async function doAuth(){
+  const cid=S.clientId||localStorage.getItem('vfx_cid')||HARDCODED_CLIENT_ID;
+  if(!cid) return;
+  S.clientId=cid; document.getElementById('cid-input').value=cid;
+  await loadGIS();
+  google.accounts.oauth2.initTokenClient({
+    client_id:S.clientId, scope:SCOPES,
+    callback:r=>{ if(r.error){showErr('setup-err','Auth error: '+r.error);return;} S.token=r.access_token; onAuthed(); }
+  }).requestAccessToken();
+}
+
+function onAuthed(){
+  document.getElementById('auth-pill').className='auth-pill in';
+  document.getElementById('auth-lbl').textContent='Connected';
+  document.getElementById('btn-connect').style.display='none';
+  document.getElementById('sec-project').style.display='block';
+  hideErr('setup-err'); setStep(2);
+}
+
+// Restore saved client id on load
+const savedCid=HARDCODED_CLIENT_ID||localStorage.getItem('vfx_cid');
+if(savedCid) document.getElementById('cid-input').value=savedCid;
+
+// ── PARSERS ──
+function tcToSec(tc,fps){
+  if(typeof tc==='number') return tc;
+  const p=tc.split(':').map(Number);
+  if(p.length<4) return parseFloat(tc)||0;
+  return p[0]*3600+p[1]*60+p[2]+p[3]/(fps||24);
+}
+function secToHMS(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60);
+  return [h,m,sec].map(n=>String(n).padStart(2,'0')).join(':');
+}
+
+function parseEDL(text){
+  const shots=[];let fps=24;
+  for(const line of text.split(/\r?\n/)){
+    const t=line.trim();
+    if(!t||t.startsWith('*')||t.startsWith('TITLE:')) continue;
+    if(t.startsWith('FCM:')) {fps=t.includes('30')||t.includes('29')?29.97:t.includes('25')?25:24;continue;}
+    const m=t.match(/^(\d+)\s+\S+\s+V\s+C\s+\S+\s+\S+\s+(\d{2}:\d{2}:\d{2}:\d{2})\s+(\d{2}:\d{2}:\d{2}:\d{2})/);
+    if(m){const inS=tcToSec(m[2],fps),outS=tcToSec(m[3],fps);if(outS>inS) shots.push({inSec:inS,outSec:outS,dur:outS-inS,fps,start:null,end:null});}
+  }
+  return shots;
+}
+
+function parseFCPXML(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  const toS=t=>{if(!t||t==='0s')return 0;const m=t.match(/^(-?\d+)\/(\d+)/);return m?parseInt(m[1])/parseInt(m[2]):parseFloat(t)||0;};
+  return [...doc.querySelectorAll('spine > *')].filter(c=>c.hasAttribute('offset')&&c.hasAttribute('duration')).map(c=>{
+    const off=toS(c.getAttribute('offset')),dur=toS(c.getAttribute('duration'));
+    return {inSec:off,outSec:off+dur,dur,fps:24,start:null,end:null};
+  }).filter(s=>s.dur>0.02);
+}
+
+// ── DROP ZONES ──
+function setupDZ(dzId,fiId,cb){
+  const dz=document.getElementById(dzId),fi=document.getElementById(fiId);
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])cb(e.dataTransfer.files[0]);});
+  fi.addEventListener('change',e=>{if(e.target.files[0])cb(e.target.files[0]);});
+}
+
+setupDZ('dz-v','fi-v',f=>{
+  S.videoFile=f; S.videoUrl=URL.createObjectURL(f);
+  const hv=document.getElementById('hv'); hv.src=S.videoUrl; hv.load();
+  fillDZ('dz-v',f.name,`${(f.size/1024/1024).toFixed(1)} MB`);
+  if(!document.getElementById('proj-name').value) document.getElementById('proj-name').value=f.name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_\-]/g,'_');
+  if(!document.getElementById('cut-label').value) document.getElementById('cut-label').value='VFX_CUT_v1';
+  if(!S.shots.length) document.getElementById('sens-section').style.display='block';
+  document.getElementById('btn-detect').disabled=false;
+  document.getElementById('proj-hint').textContent=S.shots.length?'EDL loaded — click to extract frames':'Ready — click Detect Shots';
+  document.getElementById('btn-detect').textContent=S.shots.length?'Extract Frames →':'Detect Shots →';
+});
+
+setupDZ('dz-e','fi-e',f=>{
+  f.text().then(txt=>{
+    let shots=[];
+    try{shots=(f.name.toLowerCase().endsWith('.xml')||txt.trimStart().startsWith('<?xml'))?parseFCPXML(txt):parseEDL(txt);}
+    catch(e){showErr('proj-err','Parse error: '+e.message);return;}
+    if(!shots.length){showErr('proj-err','No shots found. Check this is a valid CMX 3600 EDL or FCP XML file.');return;}
+    S.shots=shots; hideErr('proj-err');
+    fillDZ('dz-e',f.name,`${shots.length} shots found`);
+    document.getElementById('sens-section').style.display='none';
+    if(S.videoFile){document.getElementById('btn-detect').textContent='Extract Frames →';}
+    document.getElementById('proj-hint').textContent=`${shots.length} cuts from EDL`;
+  });
+});
+
+function fillDZ(id,title,sub){
+  const el=document.getElementById(id);
+  el.classList.add('filled');
+  el.innerHTML=`<div class="dz-icon" style="font-size:16px">✓</div><div class="dz-title">${title}</div><div class="dz-sub" style="color:var(--green)">${sub}</div>`;
+}
+
+// ── FRAME CAPTURE ──
+async function grabFrame(video,t){
+  return new Promise((res,rej)=>{
+    const time=Math.max(0.001,Math.min(t,video.duration-0.05));
+    const tm=setTimeout(()=>rej(new Error('timeout')),10000);
+    video.addEventListener('seeked',function h(){
+      clearTimeout(tm);video.removeEventListener('seeked',h);
+      const vw=video.videoWidth||1920,vh=video.videoHeight||1080;
+      const tw=200,th=Math.round(200*vh/vw);
+      const c=document.createElement('canvas');c.width=tw;c.height=th;
+      c.getContext('2d').drawImage(video,0,0,tw,th);
+      const url=c.toDataURL('image/jpeg',0.75);
+      res({url,b64:url.split(',')[1]});
+    },{once:true});
+    video.currentTime=time;
+  });
+}
+
+// ── AUTO DETECTION ──
+async function detectCuts(video,sensitivity){
+  const dur=video.duration,step=0.25,thresh=sensitivity,cuts=[0];
+  const c=document.createElement('canvas');c.width=64;c.height=36;
+  const ctx=c.getContext('2d');
+  let prev=null;
+  for(let t=step;t<dur-0.1;t+=step){
+    await new Promise(res=>{
+      video.addEventListener('seeked',function h(){video.removeEventListener('seeked',h);res();},{once:true});
+      video.currentTime=t;
+    });
+    ctx.drawImage(video,0,0,64,36);
+    const data=ctx.getImageData(0,0,64,36).data;
+    if(prev){
+      let diff=0;
+      for(let i=0;i<data.length;i+=4) diff+=Math.abs(data[i]-prev[i])+Math.abs(data[i+1]-prev[i+1])+Math.abs(data[i+2]-prev[i+2]);
+      if(diff/(64*36*3)>thresh) cuts.push(t);
+    }
+    prev=new Uint8ClampedArray(data);
+  }
+  cuts.push(dur);
+  const shots=[];
+  for(let i=0;i<cuts.length-1;i++){
+    const inS=cuts[i],outS=cuts[i+1];
+    if(outS-inS>0.12) shots.push({inSec:inS,outSec:outS,dur:outS-inS,fps:24,start:null,end:null});
+  }
+  return shots;
+}
+
+async function extractFrames(video,shots,onProgress){
+  for(let i=0;i<shots.length;i++){
+    const s=shots[i];
+    if(onProgress) onProgress(i+1,shots.length,s);
+    try{
+      s.start=await grabFrame(video,Math.max(0.001,s.inSec));
+      s.end=await grabFrame(video,Math.max(0.001,s.outSec-(1/s.fps)));
+    }catch(e){s.start=null;s.end=null;}
+  }
+}
+
+// ── DETECTION RUNNER ──
+async function runDetection(){
+  const video=document.getElementById('hv');
+  if(!S.videoFile){showErr('proj-err','Upload a video first.');return;}
+  S.projName=document.getElementById('proj-name').value.trim()||'VFX_Project';
+  S.cutLabel=document.getElementById('cut-label').value.trim()||'VFX_CUT_v1';
+  document.getElementById('btn-detect').disabled=true;
+  hideErr('proj-err');
+
+  if(!video.duration||isNaN(video.duration)){
+    await new Promise(res=>video.addEventListener('loadedmetadata',res,{once:true}));
+  }
+
+  if(S.shots.length){
+    await extractFrames(video,S.shots,(i,total,s)=>{
+      document.getElementById('proj-hint').textContent=`Extracting frames... (${i}/${total})`;
+    });
+  } else {
+    const sens=parseInt(document.getElementById('sens').value);
+    document.getElementById('proj-hint').textContent='Analyzing video for cuts...';
+    const detected=await detectCuts(video,sens);
+    if(!detected.length){showErr('proj-err','No cuts detected. Try lowering the sensitivity slider.');document.getElementById('btn-detect').disabled=false;return;}
+    S.shots=detected;
+    await extractFrames(video,S.shots,(i,total)=>{
+      document.getElementById('proj-hint').textContent=`Extracting frames... (${i}/${total})`;
+    });
+    document.getElementById('btn-rerun').style.display='inline-flex';
+  }
+
+  renderReview();
+  document.getElementById('sec-review').style.display='block';
+  document.getElementById('sec-review').scrollIntoView({behavior:'smooth',block:'start'});
+  setStep(3);
+}
+
+async function rerunDetect(){
+  const video=document.getElementById('hv');
+  const sens=parseInt(document.getElementById('sens').value);
+  document.getElementById('proj-hint').textContent='Re-analyzing...';
+  document.getElementById('btn-rerun').disabled=true;
+  const detected=await detectCuts(video,sens);
+  S.shots=detected;
+  await extractFrames(video,S.shots,(i,total)=>{
+    document.getElementById('proj-hint').textContent=`Extracting frames... (${i}/${total})`;
+  });
+  renderReview();
+  document.getElementById('btn-rerun').disabled=false;
+}
+
+// ── SHOT REVIEW ──
+function renderReview(){
+  const grid=document.getElementById('shots-grid');
+  document.getElementById('shot-count-tag').textContent=`${S.shots.length} shot${S.shots.length!==1?'s':''}`;
+  grid.innerHTML='';
+  S.shots.forEach((s,i)=>{
+    const id=`SH${String(i*10).padStart(4,'0')}`;
+    const card=document.createElement('div');
+    card.className='shot-card';
+    const sf=s.start?`<img src="${s.start.url}" alt="IN"><div class="flbl">IN</div>`:`<div class="fempty">—</div>`;
+    const ef=s.end?`<img src="${s.end.url}" alt="OUT"><div class="flbl">OUT</div>`:`<div class="fempty">—</div>`;
+    card.innerHTML=`<div class="shot-hdr"><span class="shot-id">${id}</span><span class="shot-dur">${s.dur.toFixed(1)}s</span></div><div class="shot-frames"><div class="fcell">${sf}</div><div class="fcell">${ef}</div></div><button class="shot-del" onclick="deleteShot(${i})" title="Remove shot">✕</button>`;
+    grid.appendChild(card);
+  });
+  const addCard=document.createElement('div');
+  addCard.className='add-card';
+  addCard.onclick=openAddModal;
+  addCard.innerHTML='<span style="font-size:20px">+</span><span>Add missed shot</span>';
+  grid.appendChild(addCard);
+}
+
+function deleteShot(idx){S.shots.splice(idx,1);renderReview();}
+
+// ── ADD SHOT MODAL ──
+function openAddModal(){
+  if(!S.videoUrl) return;
+  M.inSec=null;M.outSec=null;M.inFrame=null;M.outFrame=null;
+  const mv=document.getElementById('modal-vid');
+  mv.src=S.videoUrl;mv.load();
+  document.getElementById('fp-in-img').style.display='none';
+  document.getElementById('fp-in-empty').style.display='flex';
+  document.getElementById('fp-out-img').style.display='none';
+  document.getElementById('fp-out-empty').style.display='flex';
+  document.getElementById('btn-set-in').className='fp-btn';
+  document.getElementById('btn-set-in').textContent='Set IN at current position';
+  document.getElementById('btn-set-out').className='fp-btn';
+  document.getElementById('btn-set-out').textContent='Set OUT at current position';
+  document.getElementById('btn-add-shot').disabled=true;
+  document.getElementById('modal').style.display='flex';
+}
+
+document.getElementById('scrub-bar').addEventListener('input',function(){
+  const mv=document.getElementById('modal-vid');
+  if(!mv.duration) return;
+  mv.currentTime=(this.value/1000)*mv.duration;
+  document.getElementById('scrub-time').textContent=secToHMS(mv.currentTime);
+});
+
+document.getElementById('modal-vid').addEventListener('timeupdate',function(){
+  if(!this.duration) return;
+  document.getElementById('scrub-bar').value=(this.currentTime/this.duration)*1000;
+  document.getElementById('scrub-time').textContent=secToHMS(this.currentTime);
+});
+
+function setModalFrame(which){
+  const mv=document.getElementById('modal-vid');
+  const t=mv.currentTime;
+  const vw=mv.videoWidth||1920,vh=mv.videoHeight||1080;
+  const c=document.createElement('canvas');c.width=200;c.height=Math.round(200*vh/vw);
+  c.getContext('2d').drawImage(mv,0,0,c.width,c.height);
+  const url=c.toDataURL('image/jpeg',0.75);
+  const frame={url,b64:url.split(',')[1]};
+  if(which==='in'){
+    M.inSec=t;M.inFrame=frame;
+    document.getElementById('fp-in-img').src=url;
+    document.getElementById('fp-in-img').style.display='block';
+    document.getElementById('fp-in-empty').style.display='none';
+    document.getElementById('btn-set-in').className='fp-btn set';
+    document.getElementById('btn-set-in').textContent=`✓ IN set — ${secToHMS(t)}`;
+  } else {
+    M.outSec=t;M.outFrame=frame;
+    document.getElementById('fp-out-img').src=url;
+    document.getElementById('fp-out-img').style.display='block';
+    document.getElementById('fp-out-empty').style.display='none';
+    document.getElementById('btn-set-out').className='fp-btn set';
+    document.getElementById('btn-set-out').textContent=`✓ OUT set — ${secToHMS(t)}`;
+  }
+  document.getElementById('btn-add-shot').disabled=!(M.inSec!==null&&M.outSec!==null);
+}
+
+function confirmAddShot(){
+  if(M.inSec===null||M.outSec===null) return;
+  const inS=Math.min(M.inSec,M.outSec),outS=Math.max(M.inSec,M.outSec);
+  S.shots.push({inSec:inS,outSec:outS,dur:outS-inS,fps:24,start:M.inFrame,end:M.outFrame});
+  S.shots.sort((a,b)=>a.inSec-b.inSec);
+  renderReview();closeModal();
+}
+
+function closeModal(){
+  document.getElementById('modal').style.display='none';
+  const mv=document.getElementById('modal-vid');mv.pause();mv.src='';
+}
+
+// ── GOOGLE API HELPERS ──
+async function gapi(method,url,body,params){
+  const u=params?url+'?'+new URLSearchParams(params).toString():url;
+  const r=await fetch(u,{method,headers:{'Authorization':'Bearer '+S.token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||r.statusText);}
+  return r.json();
+}
+
+async function uploadImg(b64,name,folderId){
+  const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const meta=JSON.stringify({name,parents:[folderId],mimeType:'image/jpeg'});
+  const form=new FormData();
+  form.append('metadata',new Blob([meta],{type:'application/json'}));
+  form.append('file',new Blob([bytes],{type:'image/jpeg'}));
+  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{
+    method:'POST',headers:{'Authorization':'Bearer '+S.token},body:form
+  });
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||r.statusText);}
+  const d=await r.json();
+  await fetch(`https://www.googleapis.com/drive/v3/files/${d.id}/permissions`,{
+    method:'POST',headers:{'Authorization':'Bearer '+S.token,'Content-Type':'application/json'},
+    body:JSON.stringify({type:'anyone',role:'reader'})
+  });
+  return `https://drive.google.com/uc?export=view&id=${d.id}`;
+}
+
+function todayStr(){
+  const d=new Date();
+  return `${d.getFullYear()}_${String(d.getMonth()+1).padStart(2,'0')}_${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ── BUILD SHEET ──
+async function buildSheet(){
+  S.projName=document.getElementById('proj-name').value.trim()||'VFX_Project';
+  S.cutLabel=document.getElementById('cut-label').value.trim()||'VFX_CUT_v1';
+  if(!S.shots.length){showErr('review-err','No shots to process.');return;}
+
+  document.getElementById('sec-build').style.display='block';
+  document.getElementById('sec-build').scrollIntoView({behavior:'smooth'});
+  hideErr('global-err');
+
+  const logEl=document.getElementById('build-log');
+  const log=(msg,cls)=>{logEl.innerHTML+=`<div class="ll${cls?' ll-'+cls:''}">${msg}</div>`;logEl.scrollTop=logEl.scrollHeight;};
+  const setP=(pct,msg,det)=>{
+    document.getElementById('build-bar').style.width=pct+'%';
+    if(msg) document.getElementById('build-msg').textContent=msg;
+    if(det!==undefined) document.getElementById('build-det').textContent=det;
+  };
+
+  try{
+    // 1. Drive folder hierarchy
+    setP(2,'Creating Drive folders...','');
+    log('Setting up Drive folder structure...','info');
+
+    // Find or create root "VFX Tracker" folder
+    let rootId;
+    const rootSearch=await gapi('GET','https://www.googleapis.com/drive/v3/files',null,{q:`name='VFX Tracker' and mimeType='application/vnd.google-apps.folder' and trashed=false`,fields:'files(id)'});
+    if(rootSearch.files?.length){rootId=rootSearch.files[0].id;log('✓ Found existing VFX Tracker root folder','ok');}
+    else{const r=await gapi('POST','https://www.googleapis.com/drive/v3/files',{name:'VFX Tracker',mimeType:'application/vnd.google-apps.folder'});rootId=r.id;log('✓ Created VFX Tracker root folder','ok');}
+
+    // Project subfolder
+    const pf=await gapi('POST','https://www.googleapis.com/drive/v3/files',{name:S.projName,mimeType:'application/vnd.google-apps.folder',parents:[rootId]});
+
+    // Dated frames folder
+    const folderName=`${S.projName}_${todayStr()}`;
+    const ff=await gapi('POST','https://www.googleapis.com/drive/v3/files',{name:folderName,mimeType:'application/vnd.google-apps.folder',parents:[pf.id]});
+    S.folderId=ff.id;
+    log(`✓ Frames folder: VFX Tracker / ${S.projName} / ${folderName}`,'ok');
+
+    // 2. Create spreadsheet
+    setP(6,'Creating spreadsheet...','');
+    log('Creating Google Sheet...','info');
+    const n=S.shots.length;
+    const ss=await gapi('POST','https://sheets.googleapis.com/v4/spreadsheets',{
+      properties:{title:`${S.projName} — VFX Tracker`},
+      sheets:[{properties:{title:S.cutLabel,gridProperties:{rowCount:n+20,columnCount:9,frozenRowCount:2}}}]
+    });
+    S.ssId=ss.spreadsheetId;
+    const shId=ss.sheets[0].properties.sheetId;
+    log('✓ Spreadsheet created','ok');
+
+    // 3. Format
+    setP(10,'Formatting sheet...','');
+    const BLK={red:0,green:0,blue:0},WHT={red:1,green:1,blue:1};
+    const DRK={red:0.09,green:0.09,blue:0.1};
+    const ORG={red:0.957,green:0.639,blue:0.129};
+    const ORG_L={red:1.0,green:0.937,blue:0.808};
+    const GRN={red:0.478,green:0.659,blue:0.322};
+    const GRN_L={red:0.847,green:0.922,blue:0.800};
+    const FF='userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)';
+
+    function fmt(bg,bold,fg,sz,ha){return{userEnteredFormat:{backgroundColor:bg,textFormat:{bold:!!bold,foregroundColor:fg||WHT,fontSize:sz||10},horizontalAlignment:ha||'CENTER',verticalAlignment:'MIDDLE',wrapStrategy:'WRAP'}};}
+
+    const reqs=[];
+
+    // Row heights
+    reqs.push({updateDimensionProperties:{range:{sheetId:shId,dimension:'ROWS',startIndex:0,endIndex:1},properties:{pixelSize:32},fields:'pixelSize'}});
+    reqs.push({updateDimensionProperties:{range:{sheetId:shId,dimension:'ROWS',startIndex:1,endIndex:2},properties:{pixelSize:24},fields:'pixelSize'}});
+    reqs.push({updateDimensionProperties:{range:{sheetId:shId,dimension:'ROWS',startIndex:2,endIndex:n+2},properties:{pixelSize:130},fields:'pixelSize'}});
+
+    // Column widths: SHOT, ARTIST, START IMG, END IMG, PLATE PATH, NOTES, COMP, RENDER, EDIT CHECK
+    [90,120,260,260,180,280,120,200,200].forEach((w,i)=>reqs.push({updateDimensionProperties:{range:{sheetId:shId,dimension:'COLUMNS',startIndex:i,endIndex:i+1},properties:{pixelSize:w},fields:'pixelSize'}}));
+
+    // Header row 1 — dark bg across all
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:0,endRowIndex:1,startColumnIndex:0,endColumnIndex:9},cell:fmt(DRK,true,WHT,11),fields:FF}});
+
+    // Header row 2 — orange for A,B; dark for C-F; orange for G; green for H; dark for I
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:1,endRowIndex:2,startColumnIndex:0,endColumnIndex:2},cell:fmt(ORG,true,BLK,9),fields:FF}});
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:1,endRowIndex:2,startColumnIndex:2,endColumnIndex:6},cell:fmt(DRK,true,WHT,9),fields:FF}});
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:1,endRowIndex:2,startColumnIndex:6,endColumnIndex:7},cell:fmt(ORG,true,BLK,9),fields:FF}});
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:1,endRowIndex:2,startColumnIndex:7,endColumnIndex:8},cell:fmt(GRN,true,WHT,9),fields:FF}});
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:1,endRowIndex:2,startColumnIndex:8,endColumnIndex:9},cell:fmt(DRK,true,WHT,9),fields:FF}});
+
+    // Data rows — orange tint for A,B; green tint for H
+    for(let r=2;r<n+2;r++){
+      reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:r,endRowIndex:r+1,startColumnIndex:0,endColumnIndex:2},cell:{userEnteredFormat:{backgroundColor:ORG_L,verticalAlignment:'MIDDLE',horizontalAlignment:'CENTER',wrapStrategy:'WRAP',textFormat:{fontSize:11,bold:true}}},fields:FF}});
+      reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:r,endRowIndex:r+1,startColumnIndex:7,endColumnIndex:8},cell:{userEnteredFormat:{backgroundColor:GRN_L,verticalAlignment:'MIDDLE',horizontalAlignment:'LEFT',wrapStrategy:'WRAP',textFormat:{fontSize:10}}},fields:FF}});
+    }
+
+    // Borders
+    const bs={style:'SOLID',colorStyle:{rgbColor:{red:0.72,green:0.72,blue:0.72}}};
+    reqs.push({updateBorders:{range:{sheetId:shId,startRowIndex:0,endRowIndex:n+2,startColumnIndex:0,endColumnIndex:9},top:bs,bottom:bs,left:bs,right:bs,innerHorizontal:bs,innerVertical:bs}});
+
+    // Image cells vertical center
+    reqs.push({repeatCell:{range:{sheetId:shId,startRowIndex:2,endRowIndex:n+2,startColumnIndex:2,endColumnIndex:4},cell:{userEnteredFormat:{verticalAlignment:'MIDDLE',horizontalAlignment:'CENTER'}},fields:'userEnteredFormat(verticalAlignment,horizontalAlignment)'}});
+
+    // Dropdowns — Artist (col B)
+    reqs.push({setDataValidation:{range:{sheetId:shId,startRowIndex:2,endRowIndex:n+2,startColumnIndex:1,endColumnIndex:2},rule:{condition:{type:'ONE_OF_LIST',values:ARTISTS.map(v=>({userEnteredValue:v}))},showCustomUi:true,strict:false}}});
+
+    // Dropdowns — Comp status (col G)
+    reqs.push({setDataValidation:{range:{sheetId:shId,startRowIndex:2,endRowIndex:n+2,startColumnIndex:6,endColumnIndex:7},rule:{condition:{type:'ONE_OF_LIST',values:COMP_STATUSES.map(v=>({userEnteredValue:v}))},showCustomUi:true,strict:false}}});
+
+    await gapi('POST',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}:batchUpdate`,{requests:reqs});
+    log('✓ Formatting applied','ok');
+
+    // Merge thumbnail header C-D
+    await gapi('POST',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}:batchUpdate`,{requests:[{mergeCells:{range:{sheetId:shId,startRowIndex:0,endRowIndex:1,startColumnIndex:2,endColumnIndex:4},mergeType:'MERGE_ALL'}}]});
+
+    // 4. Write headers
+    setP(14,'Writing headers...','');
+    await gapi('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}/values/${enc(S.cutLabel+'!A1:I2')}`,{
+      values:[
+        ['SHOTS','ARTIST','THUMBNAILS','','PLATE PATH','SHOT DESCRIPTION / NOTES','COMP','RENDER FILE NAME','EDIT CHECK / KEEPER OF CONFORM'],
+        ['SHOT','ARTIST','START IMAGE','END IMAGE','PLATE PATH','SHOT DESCRIPTION / NOTES','COMP','RENDER FILE NAME','EDIT CHECK']
+      ]
+    },{valueInputOption:'USER_ENTERED'});
+    log('✓ Headers written','ok');
+
+    // 5. Process shots
+    for(let i=0;i<S.shots.length;i++){
+      const s=S.shots[i];
+      const shotId=`SH${String(i*10).padStart(4,'0')}`;
+      const row=i+3;
+      setP(14+Math.round((i/S.shots.length)*82),'Uploading frames and writing rows...',`${shotId}  (${i+1} / ${S.shots.length})`);
+      log(`Processing ${shotId}...`);
+
+      let su='',eu='';
+      if(s.start?.b64){try{su=await uploadImg(s.start.b64,`${shotId}_start.jpg`,S.folderId);log(`  ✓ IN frame uploaded`,'ok');}catch(e){log(`  ✗ IN failed: ${e.message}`,'err');}}
+      if(s.end?.b64){try{eu=await uploadImg(s.end.b64,`${shotId}_end.jpg`,S.folderId);log(`  ✓ OUT frame uploaded`,'ok');}catch(e){log(`  ✗ OUT failed: ${e.message}`,'err');}}
+
+      await gapi('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}/values/${enc(S.cutLabel+'!A'+row+':I'+row)}`,{
+        values:[[
+          shotId,'',
+          su?`=IMAGE("${su}",4,110,240)`:'',
+          eu?`=IMAGE("${eu}",4,110,240)`:'',
+          '','','PENDING','',''
+        ]]
+      },{valueInputOption:'USER_ENTERED'});
+      log(`  ✓ Row ${row} written`,'ok');
+    }
+
+    setP(100,'Complete! 🎉','');
+    log(`\n✓ All ${S.shots.length} shots written`,'ok');
+
+    const sheetUrl=`https://docs.google.com/spreadsheets/d/${S.ssId}/edit`;
+    setTimeout(()=>{
+      document.getElementById('sec-done').style.display='block';
+      document.getElementById('sec-done').scrollIntoView({behavior:'smooth'});
+      document.getElementById('sheet-link').href=sheetUrl;
+      document.getElementById('sheet-link').textContent=`${S.projName} — VFX Tracker`;
+      document.getElementById('done-sub').textContent=`${S.shots.length} shots · Drive: VFX Tracker / ${S.projName} / ${S.projName}_${todayStr()}`;
+      document.getElementById('done-meta').innerHTML=`<span class="mi"><strong>${S.shots.length}</strong> shots</span><span class="mi"><strong>${S.cutLabel}</strong></span><span class="tag tag-green">Sheet ready</span>`;
+      setStep(4);
+    },600);
+
+  }catch(e){showErr('global-err','Error: '+e.message);log('✗ '+e.message,'err');}
+}
+
+// ── ADD ANOTHER CUT ──
+async function addAnotherCut(){
+  const newCut=prompt('Tab name for new cut/version:','VFX_CUT_v2');
+  if(!newCut||!S.ssId) return;
+  try{
+    await gapi('POST',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}:batchUpdate`,{requests:[{addSheet:{properties:{title:newCut,gridProperties:{frozenRowCount:2}}}}]});
+    S.cutLabel=newCut;S.shots=[];S.videoFile=null;
+    document.getElementById('cut-label').value=newCut;
+    fillDZ('dz-v','Drop video here','mp4, mov, mxf — stays on your machine');
+    document.getElementById('dz-v').classList.remove('filled');
+    document.getElementById('dz-v').innerHTML='<div class="dz-icon">🎬</div><div class="dz-title">Drop video here</div><div class="dz-sub">mp4, mov, mxf</div>';
+    document.getElementById('dz-e').classList.remove('filled');
+    document.getElementById('dz-e').innerHTML='<div class="dz-opt">OPTIONAL</div><div class="dz-icon">📋</div><div class="dz-title">Drop EDL / XML here</div><div class="dz-sub">CMX 3600 or FCP XML</div>';
+    document.getElementById('btn-detect').disabled=true;
+    document.getElementById('sec-review').style.display='none';
+    document.getElementById('sec-build').style.display='none';
+    document.getElementById('sec-done').style.display='none';
+    document.getElementById('build-log').innerHTML='';
+    document.getElementById('shots-grid').innerHTML='';
+    document.getElementById('sens-section').style.display='none';
+    document.getElementById('proj-hint').textContent='Upload a video to continue';
+    setStep(2);
+    document.getElementById('sec-project').scrollIntoView({behavior:'smooth'});
+    alert(`Tab "${newCut}" added to the spreadsheet. Upload your next video + EDL.`);
+  }catch(e){showErr('global-err','Could not add tab: '+e.message);}
+}
+
+// ── UTILS ──
+const enc=s=>encodeURIComponent(s);
+function setStep(n){[1,2,3,4].forEach(i=>{const el=document.getElementById('ts'+i);el.className='tstep'+(i<n?' done':i===n?' active':'');el.querySelector('.tstep-n').textContent=i<n?'✓':String(i);});}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.style.display='block';}
+function hideErr(id){document.getElementById(id).style.display='none';}
+</script>
+</body>
+</html>
