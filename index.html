@@ -194,8 +194,8 @@ input,button,select,textarea{font-family:inherit;}
         <div class="drop" id="drop-edl">
           <div class="drop-ico">📄</div>
           <div class="drop-main" id="drop-edl-main">Drop EDL or XML here, or click to browse</div>
-          <div class="drop-sub" id="drop-edl-sub">CMX 3600 .edl or Final Cut Pro .xml — skip to use auto-detection</div>
-          <input type="file" id="file-edl" accept=".edl,.xml,.fcpxml,text/plain,text/xml">
+          <div class="drop-sub" id="drop-edl-sub">CMX 3600 .edl, Final Cut .xml, or PySceneDetect .csv — skip to use built-in detection</div>
+          <input type="file" id="file-edl" accept=".edl,.xml,.fcpxml,.csv,text/plain,text/xml,text/csv">
         </div>
       </div>
 
@@ -447,13 +447,22 @@ wireDrop('drop-vid','file-vid', f=>{
   if(S.videoURL) URL.revokeObjectURL(S.videoURL);
   S.videoURL = URL.createObjectURL(f);
   vid.src = S.videoURL;
-  vid.addEventListener('loadedmetadata', function h(){
+  vid.addEventListener('loadedmetadata', async function h(){
     vid.removeEventListener('loadedmetadata', h);
     S.duration = vid.duration;
     $('drop-vid').classList.add('has');
     $('drop-vid-main').textContent = f.name;
-    $('drop-vid-sub').textContent = `${(f.size/1048576).toFixed(1)} MB · ${secToTC(S.duration)} @ ${S.fps} fps`;
+    $('drop-vid-sub').textContent = `${(f.size/1048576).toFixed(1)} MB · measuring frame rate…`;
     $('vid-badge').textContent = 'local only';
+    const measured = await measureFps();
+    if(measured){
+      S.fps = measured;
+      const opt = [...$('fps-sel').options].find(o=>Math.abs(parseFloat(o.value)-measured)<0.01);
+      if(opt) $('fps-sel').value = opt.value;
+      $('drop-vid-sub').textContent = `${(f.size/1048576).toFixed(1)} MB · ${secToTC(S.duration)} · detected ${measured} fps`;
+    } else {
+      $('drop-vid-sub').textContent = `${(f.size/1048576).toFixed(1)} MB · ${secToTC(S.duration)} @ ${S.fps} fps (from dropdown)`;
+    }
     $('btn-analyze').disabled = false;
   });
   vid.addEventListener('error', function h(){
@@ -461,11 +470,44 @@ wireDrop('drop-vid','file-vid', f=>{
     showErr('err-media','This browser cannot decode that video. Try an H.264 MP4.');
   });
 });
+/* Measure the video's true frame rate by timing presented frames.
+   A 23.976 file analyzed as 24 drifts one frame every ~16s — this prevents that. */
+const STD_RATES = [23.976,24,25,29.97,30,48,50,59.94,60];
+async function measureFps(){
+  if(!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return null;
+  try{
+    vid.currentTime = Math.min(1, S.duration/3);
+    await new Promise(r=>{const h=()=>{vid.removeEventListener('seeked',h);r();};vid.addEventListener('seeked',h);});
+    const times = [];
+    await vid.play();
+    await new Promise((res)=>{
+      const to = setTimeout(res, 2500); // safety timeout
+      const cb = (now, meta)=>{
+        times.push(meta.mediaTime);
+        if(times.length >= 16){ clearTimeout(to); res(); }
+        else vid.requestVideoFrameCallback(cb);
+      };
+      vid.requestVideoFrameCallback(cb);
+    });
+    vid.pause(); vid.currentTime = 0;
+    if(times.length < 8) return null;
+    const deltas = [];
+    for(let i=1;i<times.length;i++){const d=times[i]-times[i-1]; if(d>0.001) deltas.push(d);}
+    if(deltas.length < 5) return null;
+    deltas.sort((a,b)=>a-b);
+    const raw = 1/deltas[Math.floor(deltas.length/2)];
+    // snap to the nearest standard rate if within 2%
+    let best = null, bestErr = Infinity;
+    for(const r of STD_RATES){const e=Math.abs(r-raw)/r; if(e<bestErr){bestErr=e;best=r;}}
+    return bestErr < 0.02 ? best : Math.round(raw*1000)/1000;
+  }catch(e){ try{vid.pause();}catch(_){} return null; }
+}
 wireDrop('drop-edl','file-edl', async f=>{
   hideErr('err-media');
   const text = await f.text();
   let cuts = null;
-  if(/\.(xml|fcpxml)$/i.test(f.name) || text.trimStart().startsWith('<')) cuts = parseFCPXML(text);
+  if(/\.csv$/i.test(f.name) || /Start Time \(seconds\)/.test(text)) cuts = parsePySceneCSV(text);
+  else if(/\.(xml|fcpxml)$/i.test(f.name) || text.trimStart().startsWith('<')) cuts = parseFCPXML(text);
   else cuts = parseEDL(text);
   if(!cuts || cuts.length === 0){
     showErr('err-media','Could not read any events from that file. It will be ignored — auto-detection will be used instead.');
@@ -500,6 +542,23 @@ function snapDedupe(times){
   const fps = S.fps;
   const frames = [...new Set(times.map(t=>Math.round(t*fps)))].filter(f=>f>0).sort((a,b)=>a-b);
   return frames.map(f=>f/fps);
+}
+/* PySceneDetect list-scenes CSV: header row contains "Start Time (seconds)".
+   Using the seconds column makes this frame-rate independent. */
+function parsePySceneCSV(text){
+  const lines = text.split(/\r?\n/);
+  const hdrIdx = lines.findIndex(l=>l.includes('Start Time (seconds)'));
+  if(hdrIdx === -1) return null;
+  const cols = lines[hdrIdx].split(',').map(c=>c.trim());
+  const tCol = cols.indexOf('Start Time (seconds)');
+  const starts = [];
+  for(let i=hdrIdx+1;i<lines.length;i++){
+    const cells = lines[i].split(',');
+    if(cells.length <= tCol) continue;
+    const v = parseFloat(cells[tCol]);
+    if(!isNaN(v)) starts.push(v);
+  }
+  return snapDedupe(starts);
 }
 function parseFCPXML(text){
   try{
@@ -677,10 +736,40 @@ async function rebuildShots(captureAll){
     $('scan-bar').style.width = (done/missing.length*100)+'%';
     // cut times are frame-aligned: first frame = inSec, last frame = outSec − 1 frame.
     // Seek to frame midpoints so the decoder can't land on the neighboring frame.
-    await seekTo(s.inSec + half);                          s.startB64 = grabThumbB64();
-    await seekTo(Math.max(s.outSec - half, s.inSec + half)); s.endB64 = grabThumbB64();
+    const midT = (s.inSec + s.outSec)/2;
+    await seekTo(midT); s.midLuma = grabSmall();   // interior reference for verification
+    await seekTo(s.inSec + half);
+    s.startLuma = grabSmall(); s.startB64 = grabThumbB64();
+    await seekTo(Math.max(s.outSec - half, s.inSec + half));
+    s.endLuma = grabSmall(); s.endB64 = grabThumbB64();
   }
+  if(missing.length) await verifyBoundaries();
   renderShots();
+}
+/* Self-correcting boundary check: at every cut, the end frame of shot A must look
+   more like A's interior than B's, and B's start frame more like B's than A's.
+   If a grab landed on the wrong side of the cut (decoder imprecision, cadence,
+   slightly-off cut time), step one frame inward and re-grab — up to 3 frames. */
+async function verifyBoundaries(){
+  const fpsv = S.fps;
+  let fixed = 0;
+  for(let i=1;i<S.shots.length;i++){
+    const a = S.shots[i-1], b = S.shots[i];
+    if(!a.endLuma || !b.startLuma || !a.midLuma || !b.midLuma) continue;
+    // end of A grabbed B's first frame?
+    for(let step=1; step<=3; step++){
+      if(lumaDiff(a.endLuma, b.midLuma) >= lumaDiff(a.endLuma, a.midLuma)) break;
+      const t = Math.max(a.outSec - (step + 0.5)/fpsv, a.inSec + 0.5/fpsv);
+      await seekTo(t); a.endLuma = grabSmall(); a.endB64 = grabThumbB64(); fixed++;
+    }
+    // start of B grabbed A's last frame?
+    for(let step=1; step<=3; step++){
+      if(lumaDiff(b.startLuma, a.midLuma) >= lumaDiff(b.startLuma, b.midLuma)) break;
+      const t = Math.min(b.inSec + (step + 0.5)/fpsv, b.outSec - 0.5/fpsv);
+      await seekTo(t); b.startLuma = grabSmall(); b.startB64 = grabThumbB64(); fixed++;
+    }
+  }
+  if(fixed) $('scan-label').textContent = `Corrected ${fixed} boundary frame${fixed>1?'s':''}`;
 }
 function renderShots(){
   $('shot-count').textContent = S.shots.length;
@@ -972,7 +1061,7 @@ function resetMediaUI(){
   $('vid-badge').textContent = '';
   $('drop-edl').classList.remove('has');
   $('drop-edl-main').textContent = 'Drop EDL or XML here, or click to browse';
-  $('drop-edl-sub').textContent = 'CMX 3600 .edl or Final Cut Pro .xml — skip to use auto-detection';
+  $('drop-edl-sub').textContent = 'CMX 3600 .edl, Final Cut .xml, or PySceneDetect .csv — skip to use built-in detection';
   $('file-vid').value = ''; $('file-edl').value = '';
   $('btn-analyze').disabled = true;
   $('shots-grid').innerHTML = '';
