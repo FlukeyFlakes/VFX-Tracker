@@ -474,24 +474,32 @@ wireDrop('drop-edl','file-edl', async f=>{
   S.edlCuts = cuts;
   $('drop-edl').classList.add('has');
   $('drop-edl-main').textContent = f.name;
-  $('drop-edl-sub').textContent = `${cuts.length+1} shots from edit list — auto-detection disabled`;
+  $('drop-edl-sub').textContent = `${cuts.length+1} video shots from edit list — auto-detection disabled. Make sure the frame rate (${S.fps}) matches this EDL.`;
 });
 
 /* ── EDL / XML parsing ────────────────────────────────────── */
 function parseEDL(text){
-  // CMX 3600: EVENT REEL TRACK TRANS  SRC-IN SRC-OUT  REC-IN REC-OUT
-  const re = /^\s*\d+\s+\S+\s+\S+\s+\S+(?:\s+\S+)?\s+([\d:;]{11})\s+([\d:;]{11})\s+([\d:;]{11})\s+([\d:;]{11})/;
+  // CMX 3600: EVENT REEL TRACK TRANS [DUR] SRC-IN SRC-OUT REC-IN REC-OUT
+  const re = /^\s*\d+\s+\S+\s+(\S+)\s+\S+(?:\s+\S+)?\s+([\d:;]{11})\s+([\d:;]{11})\s+([\d:;]{11})\s+([\d:;]{11})/;
   const recIns = [];
   let first = null;
   for(const line of text.split(/\r?\n/)){
     const m = line.match(re);
     if(!m) continue;
-    const recIn = tcToSec(m[3], S.fps);
+    const track = m[1].toUpperCase();
+    // video events only — skip audio-only (A, A2, AA…) so audio edits don't create phantom cuts
+    if(!(track.includes('V') || track === 'B')) continue;
+    const recIn = tcToSec(m[4], S.fps);
     if(recIn === null) continue;
     if(first === null) first = recIn;
     recIns.push(recIn - first);
   }
-  return recIns.filter(t=>t > 0.001).sort((a,b)=>a-b);
+  return snapDedupe(recIns);
+}
+function snapDedupe(times){
+  const fps = S.fps;
+  const frames = [...new Set(times.map(t=>Math.round(t*fps)))].filter(f=>f>0).sort((a,b)=>a-b);
+  return frames.map(f=>f/fps);
 }
 function parseFCPXML(text){
   try{
@@ -509,7 +517,7 @@ function parseFCPXML(text){
       const base = Math.min(...starts.filter(v=>v!==null));
       starts = starts.filter(v=>v!==null).map(v=>v-base);
     }
-    return starts.filter(t=>t > 0.001).sort((a,b)=>a-b);
+    return snapDedupe(starts);
   }catch(e){ return null; }
 }
 function parseRational(str){
@@ -564,6 +572,7 @@ $('btn-analyze').addEventListener('click', async ()=>{
     } else {
       await scanVideo();
       S.cuts = thresholdCuts(parseInt($('sens').value));
+      await refineCuts();
       $('btn-resens').style.display = '';
       $('sens2').value = $('sens').value;
       $('sens2-val').textContent = $('sens').value;
@@ -596,16 +605,56 @@ async function scanVideo(){
   S.scanned = true;
 }
 function thresholdCuts(sens){
-  // sens 1..100  →  threshold ~58..8 (mean-luma-delta out of 255)
-  const thr = 58 - sens*0.5;
+  // sens 1..100. A cut fires when the frame diff is EITHER very large in absolute
+  // terms, OR moderately large AND a clear spike vs. its neighborhood (rejects
+  // steady high-motion footage like whip pans, catches cuts in busy scenes).
+  const absThr  = 58 - sens*0.5;          // hard trigger
+  const softThr = absThr * 0.55;          // spike trigger floor
+  const ratioThr = 3.4 - sens*0.014;      // spike must be this × local median
   const cuts = [];
   let last = -MIN_SHOT_LEN;
-  for(const d of S.diffs){
-    if(d.score >= thr && d.t - last >= MIN_SHOT_LEN){
-      cuts.push(d.t); last = d.t;
+  for(let i=0;i<S.diffs.length;i++){
+    const d = S.diffs[i];
+    if(d.t - last < MIN_SHOT_LEN) continue;
+    let fire = d.score >= absThr;
+    if(!fire && d.score >= softThr){
+      const win = [];
+      for(let j=Math.max(0,i-7); j<=Math.min(S.diffs.length-1,i+7); j++){
+        if(j!==i) win.push(S.diffs[j].score);
+      }
+      win.sort((a,b)=>a-b);
+      const med = win[Math.floor(win.length/2)] || 0;
+      fire = d.score >= (med + 1.5) * ratioThr;
     }
+    if(fire){ cuts.push(d.t); last = d.t; }
   }
   return cuts;
+}
+/* Frame-accurate refinement: each detected cut time is only sample-accurate
+   (±SAMPLE_STEP). Step frame-by-frame around it to find the exact frame where
+   the picture changes, so start/end grabs land on the true first/last frames. */
+async function refineCuts(){
+  const fps = S.fps, refined = [];
+  for(let i=0;i<S.cuts.length;i++){
+    const t = S.cuts[i];
+    const lo = Math.max(0, t - SAMPLE_STEP - 0.5/fps);
+    const hi = Math.min(S.duration - 0.02, t + 1.5/fps);
+    let prev = null, bestF = Math.round(t*fps), bestScore = -1;
+    for(let f = Math.floor(lo*fps); f <= Math.ceil(hi*fps); f++){
+      await seekTo((f + 0.5)/fps);          // sample mid-frame to avoid boundary ambiguity
+      const luma = grabSmall();
+      if(prev){
+        const sc = lumaDiff(prev, luma);
+        if(sc > bestScore){ bestScore = sc; bestF = f; }  // cut = first frame of new shot
+      }
+      prev = luma;
+    }
+    refined.push(bestF / fps);
+    $('scan-bar').style.width = ((i+1)/S.cuts.length*100)+'%';
+    $('scan-label').textContent = `Refining cut ${i+1}/${S.cuts.length} to exact frame`;
+    if(i % 4 === 0) await sleep(0);
+  }
+  S.cuts = snapDedupe(refined);
 }
 
 /* ── Shots ────────────────────────────────────────────────── */
@@ -622,11 +671,14 @@ async function rebuildShots(captureAll){
   S.shots.forEach((s,i)=> s.id = 'SH' + String(i*10).padStart(4,'0'));
   const missing = S.shots.filter(s=>!s.startB64);
   let done = 0;
+  const half = 0.5 / S.fps;
   for(const s of missing){
     $('scan-label').textContent = `Capturing ${s.id} (${++done}/${missing.length})`;
     $('scan-bar').style.width = (done/missing.length*100)+'%';
-    await seekTo(s.inSec + 0.03);  s.startB64 = grabThumbB64();
-    await seekTo(Math.max(s.outSec - 0.05, s.inSec)); s.endB64 = grabThumbB64();
+    // cut times are frame-aligned: first frame = inSec, last frame = outSec − 1 frame.
+    // Seek to frame midpoints so the decoder can't land on the neighboring frame.
+    await seekTo(s.inSec + half);                          s.startB64 = grabThumbB64();
+    await seekTo(Math.max(s.outSec - half, s.inSec + half)); s.endB64 = grabThumbB64();
   }
   renderShots();
 }
@@ -664,6 +716,7 @@ $('btn-resens').addEventListener('click', ()=>{
 });
 $('btn-apply-sens').addEventListener('click', async ()=>{
   S.cuts = thresholdCuts(parseInt($('sens2').value));
+  await refineCuts();
   await rebuildShots();
 });
 
@@ -690,9 +743,9 @@ document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',
 $('modal-cancel').addEventListener('click', ()=>$('modal-bg').classList.remove('open'));
 $('modal-bg').addEventListener('click', e=>{ if(e.target===$('modal-bg')) $('modal-bg').classList.remove('open'); });
 $('modal-confirm').addEventListener('click', async ()=>{
-  const t = mvid.currentTime;
+  const t = Math.round(mvid.currentTime * S.fps) / S.fps;  // snap to frame
   $('modal-bg').classList.remove('open');
-  if(t > 0.05 && t < S.duration - 0.05 && !S.cuts.some(c=>Math.abs(c-t)<0.05)){
+  if(t > 0.05 && t < S.duration - 0.05 && !S.cuts.some(c=>Math.abs(c-t)<0.6/S.fps)){
     S.cuts = [...S.cuts, t].sort((a,b)=>a-b);
     await rebuildShots();
   }
