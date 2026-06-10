@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VFX Shot Tracker Pro</title>
+<title>VFX Shot Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Epilogue:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* CSS remains the same as your original, providing the sleek UI */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --bg:#0c0c0e;--s1:#141416;--s2:#1a1a1d;--s3:#222226;--s4:#2a2a2f;
@@ -21,12 +20,14 @@
   --r:10px;--rsm:6px;
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;}
-input,button,select{font-family:inherit;}
-::-webkit-scrollbar{width:4px;height:4px;}
+input,button,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px;}
+::-webkit-scrollbar-thumb{background:var(--dim);border-radius:3px;}
+::selection{background:rgba(232,150,30,0.25);}
+
 .app{display:grid;grid-template-rows:52px 1fr;height:100vh;overflow:hidden;}
-.topbar{display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border);gap:12px;}
+.topbar{display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border);gap:12px;flex-shrink:0;}
 .logo{font-size:14px;font-weight:800;letter-spacing:0.05em;}
 .logo em{color:var(--accent);font-style:normal;}
 .top-steps{display:flex;align-items:center;gap:2px;margin-left:20px;}
@@ -37,306 +38,892 @@ input,button,select{font-family:inherit;}
 .tstep.done .tstep-n{background:var(--green);border-color:var(--green);color:#fff;}
 .tstep.active .tstep-n{background:var(--accent);border-color:var(--accent);color:#000;}
 .top-r{margin-left:auto;display:flex;align-items:center;gap:10px;}
-.auth-pill{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+.auth-pill{display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
 .auth-pill.out{background:var(--s3);color:var(--muted);}
 .auth-pill.in{background:var(--green-bg);color:var(--green);border:1px solid rgba(79,168,74,0.25);}
 .auth-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
 .main{overflow-y:auto;overflow-x:hidden;}
-.panel{max-width:900px;margin:0 auto;padding:28px 20px 80px;}
+.panel{max-width:920px;margin:0 auto;padding:28px 20px 90px;}
 .card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:14px;}
 .card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
 .card-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);}
-.btn{height:34px;padding:0 16px;border-radius:var(--rsm);border:1px solid var(--border2);background:transparent;color:var(--text);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
+.hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.55;}
+.hint code{font-family:var(--mono);font-size:11px;background:var(--s3);padding:1px 5px;border-radius:4px;}
+
+.btn{height:36px;padding:0 16px;border-radius:var(--rsm);border:1px solid var(--border2);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;}
 .btn:hover:not(:disabled){background:var(--s3);border-color:var(--border3);}
-.btn-accent{background:var(--accent);border-color:transparent;color:#000;font-weight:700;}
-.btn-sm{height:28px;padding:0 11px;font-size:11px;border-radius:5px;}
-.field{margin-bottom:12px;}
-.field label{display:block;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
-.field input[type=text]{width:100%;height:36px;padding:0 11px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text);font-family:var(--mono);font-size:12px;outline:none;}
-.field-hint{font-size:11px;color:var(--muted);margin-top:4px;}
-.dz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.dz{border:1.5px dashed var(--border2);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .15s;}
-.dz:hover{border-color:var(--accent);background:var(--accent-bg);}
-.dz.filled{border-style:solid;border-color:var(--green);background:var(--green-bg);}
-.shots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:10px;max-height:500px;overflow-y:auto;}
-.shot-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden;position:relative;}
-.shot-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);}
-.shot-id{font-size:11px;font-weight:700;font-family:var(--mono);}
-.shot-frames{display:grid;grid-template-columns:1fr 1fr;}
-.fcell{position:relative;height:54px;background:#000;}
-.fcell img{width:100%;height:100%;object-fit:cover;}
-.prog-wrap{background:var(--s3);border-radius:99px;height:4px;overflow:hidden;margin-bottom:14px;}
-.prog-bar{height:100%;background:var(--accent);transition:width .35s;}
-.log{background:#090909;border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;max-height:240px;overflow-y:auto;font-family:var(--mono);font-size:10.5px;}
-.ll-ok{color:var(--green);}
-.ll-info{color:var(--blue);}
-.backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100;display:none;align-items:center;justify-content:center;}
-.modal{background:var(--s1);padding:24px;width:580px;border-radius:var(--r);}
-#hv{position:fixed;left:-9999px;top:-9999px;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#000;}
+.btn.primary:hover:not(:disabled){background:var(--accent-d);border-color:var(--accent-d);}
+.btn.danger{color:var(--red);border-color:rgba(212,74,58,0.35);}
+.btn.danger:hover:not(:disabled){background:var(--red-bg);}
+.btn.lg{height:44px;padding:0 26px;font-size:13px;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.field input[type=text],.field select{width:100%;height:38px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--rsm);color:var(--text);padding:0 12px;font-size:13px;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:640px){.row2{grid-template-columns:1fr;}}
+
+.drop{border:1.5px dashed var(--border2);border-radius:var(--r);padding:30px 20px;text-align:center;cursor:pointer;transition:all .15s;}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-bg);}
+.drop.has{border-style:solid;border-color:rgba(79,168,74,0.4);background:var(--green-bg);cursor:default;}
+.drop-ico{font-size:22px;margin-bottom:6px;}
+.drop-main{font-size:13px;font-weight:600;}
+.drop-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.drop input{display:none;}
+
+.slider-row{display:flex;align-items:center;gap:14px;margin-top:14px;}
+.slider-row input[type=range]{flex:1;accent-color:var(--accent);}
+.slider-val{font-family:var(--mono);font-size:12px;color:var(--accent);min-width:34px;text-align:right;}
+
+.prog-wrap{background:var(--s2);border-radius:99px;height:8px;overflow:hidden;margin:14px 0 6px;}
+.prog-bar{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .2s;}
+.prog-label{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+.log{background:var(--s2);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px;font-family:var(--mono);font-size:11px;line-height:1.8;max-height:220px;overflow-y:auto;margin-top:14px;}
+.log .ok{color:var(--green);}
+.log .err{color:var(--red);}
+
+.err-box{display:none;background:var(--red-bg);border:1px solid rgba(212,74,58,0.35);color:#e98a7e;border-radius:var(--rsm);padding:10px 14px;font-size:12px;margin-top:12px;line-height:1.5;}
+
+.shots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.shot-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.shot-thumbs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);}
+.shot-thumbs img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#000;}
+.shot-thumb-lbl{position:relative;}
+.shot-thumb-lbl span{position:absolute;bottom:4px;left:5px;font-size:9px;font-weight:700;letter-spacing:0.08em;background:rgba(0,0,0,0.65);color:#fff;padding:1px 5px;border-radius:3px;}
+.shot-meta{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;}
+.shot-id{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent);}
+.shot-tc{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.shot-del{background:none;border:none;color:var(--dim);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:4px;line-height:1;}
+.shot-del:hover{color:var(--red);background:var(--red-bg);}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:50;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:var(--r);padding:20px;max-width:680px;width:100%;}
+.modal video{width:100%;border-radius:var(--rsm);background:#000;margin-bottom:12px;}
+.modal-tc{font-family:var(--mono);font-size:13px;color:var(--accent);text-align:center;margin-bottom:10px;}
+.modal-btns{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
+
+.done-box{text-align:center;padding:36px 20px;}
+.done-ico{width:56px;height:56px;border-radius:50%;background:var(--green-bg);border:1.5px solid rgba(79,168,74,0.4);color:var(--green);font-size:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.done-title{font-size:19px;font-weight:800;margin-bottom:8px;}
+.done-sub{font-size:13px;color:var(--muted);max-width:440px;margin:0 auto 22px;line-height:1.6;}
+.done-btns{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
+.step-sec{display:none;}
+.step-sec.show{display:block;}
+.foot-note{font-size:11px;color:var(--dim);margin-top:6px;}
+.badge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:99px;background:var(--s3);color:var(--muted);}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="logo">VFX <em>TRACKER</em></div>
+    <div class="logo">VFX<em>/</em>TRACKER</div>
     <div class="top-steps">
-      <div class="tstep active" id="ts1"><div class="tstep-n">1</div>Connect</div>
-      <div class="tstep" id="ts2"><div class="tstep-n">2</div>Project</div>
+      <div class="tstep active" id="ts1"><div class="tstep-n">1</div>Setup</div>
+      <div class="tstep" id="ts2"><div class="tstep-n">2</div>Media</div>
       <div class="tstep" id="ts3"><div class="tstep-n">3</div>Review</div>
       <div class="tstep" id="ts4"><div class="tstep-n">4</div>Build</div>
     </div>
     <div class="top-r">
-      <div class="auth-pill out" id="auth-pill"><div class="auth-dot"></div><span id="auth-lbl">Not connected</span></div>
-      <button class="btn btn-accent btn-sm" id="btn-connect" onclick="saveAndAuth()">Connect Google</button>
+      <div class="auth-pill out" id="auth-pill"><div class="auth-dot"></div><span id="auth-label">Not connected</span></div>
     </div>
   </div>
 
   <div class="main"><div class="panel">
-    <div class="card" id="sec-setup">
-      <div class="card-hdr"><div class="card-title">Google Cloud Setup</div></div>
-      <div class="field">
-        <label>OAuth Client ID</label>
-        <input type="text" id="cid-input" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"/>
-      </div>
-      <div class="btn-row"><button class="btn btn-accent" onclick="saveAndAuth()">Save &amp; Connect Google →</button></div>
-    </div>
 
-    <div class="card" id="sec-project" style="display:none;">
-      <div class="card-hdr"><div class="card-title">Project Setup</div></div>
-      <div class="dz-grid">
-        <div class="dz" id="dz-v" onclick="document.getElementById('fi-v').click()">
-          <div class="dz-title">Drop video here</div>
+    <!-- STEP 1 : SETUP -->
+    <section class="step-sec show" id="sec-1">
+      <div class="card" id="cid-card">
+        <div class="card-hdr"><div class="card-title">Google OAuth Client ID</div></div>
+        <div class="field">
+          <label for="cid-input">Client ID</label>
+          <input type="text" id="cid-input" placeholder="1234567890-xxxxxxxx.apps.googleusercontent.com" autocomplete="off">
         </div>
-        <input type="file" id="fi-v" accept="video/*" style="display:none">
-        <div class="dz" id="dz-e" onclick="document.getElementById('fi-e').click()">
-          <div class="dz-title">Drop EDL/XML (Optional)</div>
-        </div>
-        <input type="file" id="fi-e" accept=".edl,.xml" style="display:none">
+        <p class="hint">One-time setup: create a Google Cloud project, enable the <strong>Drive</strong> and <strong>Sheets</strong> APIs, create an OAuth Client ID (Web application), and add this page's URL to <em>Authorized JavaScript origins</em>. To skip this field for the whole team, hardcode it in <code>HARDCODED_CLIENT_ID</code> at the top of the script.</p>
       </div>
-      <div class="field">
-        <label>Project Name</label>
-        <input type="text" id="proj-name" value="VFX_Project_2026">
-      </div>
-      <button class="btn btn-accent" id="btn-detect" disabled onclick="runDetection()">Detect Shots →</button>
-      <div id="proj-hint" style="font-size:11px; margin-top:8px; color:var(--muted)">Upload video to begin.</div>
-    </div>
 
-    <div class="card" id="sec-review" style="display:none;">
-      <div class="card-hdr"><div class="card-title">Shot Review</div><span id="shot-count-tag" class="auth-pill in">0 shots</span></div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Connect Google Workspace</div></div>
+        <button class="btn primary lg" id="btn-connect">Connect Google account</button>
+        <p class="hint">Your video never leaves this machine. Only small thumbnail JPEGs are uploaded to your own Google Drive.</p>
+        <div class="err-box" id="err-auth"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Project</div></div>
+        <div class="row2">
+          <div class="field"><label for="proj-name">Project name</label><input type="text" id="proj-name" placeholder="e.g. Sunset_Spot"></div>
+          <div class="field"><label for="cut-label">Cut / version label</label><input type="text" id="cut-label" placeholder="e.g. Cut_03"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="fps-sel">Frame rate</label>
+            <select id="fps-sel">
+              <option value="23.976">23.976</option><option value="24" selected>24</option>
+              <option value="25">25</option><option value="29.97">29.97</option>
+              <option value="30">30</option><option value="59.94">59.94</option><option value="60">60</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+        <button class="btn primary" id="btn-to-2" disabled>Continue to media →</button>
+        <div class="err-box" id="err-setup"></div>
+      </div>
+    </section>
+
+    <!-- STEP 2 : MEDIA -->
+    <section class="step-sec" id="sec-2">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Video (stays local)</div><span class="badge" id="vid-badge"></span></div>
+        <div class="drop" id="drop-vid">
+          <div class="drop-ico">🎬</div>
+          <div class="drop-main" id="drop-vid-main">Drop video here, or click to browse</div>
+          <div class="drop-sub" id="drop-vid-sub">MP4 / MOV / WebM — analyzed in your browser only</div>
+          <input type="file" id="file-vid" accept="video/*">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">EDL / FCP XML (optional)</div></div>
+        <div class="drop" id="drop-edl">
+          <div class="drop-ico">📄</div>
+          <div class="drop-main" id="drop-edl-main">Drop EDL or XML here, or click to browse</div>
+          <div class="drop-sub" id="drop-edl-sub">CMX 3600 .edl or Final Cut Pro .xml — skip to use auto-detection</div>
+          <input type="file" id="file-edl" accept=".edl,.xml,.fcpxml,text/plain,text/xml">
+        </div>
+      </div>
+
+      <div class="card" id="detect-card">
+        <div class="card-hdr"><div class="card-title">Cut detection sensitivity</div></div>
+        <div class="slider-row">
+          <input type="range" id="sens" min="1" max="100" value="50" aria-label="Detection sensitivity">
+          <div class="slider-val" id="sens-val">50</div>
+        </div>
+        <p class="hint">Higher = more cuts detected (and more false positives). Ignored when an EDL/XML is provided. You can re-adjust after scanning without re-scanning the video.</p>
+        <div style="margin-top:16px;">
+          <button class="btn primary lg" id="btn-analyze" disabled>Analyze video →</button>
+        </div>
+        <div id="scan-prog" style="display:none;">
+          <div class="prog-wrap"><div class="prog-bar" id="scan-bar"></div></div>
+          <div class="prog-label" id="scan-label">Scanning…</div>
+        </div>
+        <div class="err-box" id="err-media"></div>
+      </div>
+    </section>
+
+    <!-- STEP 3 : REVIEW -->
+    <section class="step-sec" id="sec-3">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Review shots — <span id="shot-count">0</span> detected</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" id="btn-resens" style="display:none;">↻ Re-threshold</button>
+            <button class="btn" id="btn-add-shot">＋ Add missed cut</button>
+            <button class="btn primary" id="btn-to-4">Looks good — build sheet →</button>
+          </div>
+        </div>
+        <div class="slider-row" id="resens-row" style="display:none;">
+          <input type="range" id="sens2" min="1" max="100" value="50" aria-label="Re-threshold sensitivity">
+          <div class="slider-val" id="sens2-val">50</div>
+          <button class="btn" id="btn-apply-sens">Apply</button>
+        </div>
+        <p class="hint">Delete false positives with ✕ (the shot merges into the previous one). Add missed cuts with the scrubber. Shot IDs renumber automatically in steps of 10.</p>
+      </div>
       <div class="shots-grid" id="shots-grid"></div>
-      <div class="btn-row" style="margin-top:16px;">
-        <button class="btn btn-accent" onclick="buildSheet()">Build Google Sheet →</button>
+    </section>
+
+    <!-- STEP 4 : BUILD -->
+    <section class="step-sec" id="sec-4">
+      <div class="card" id="build-card">
+        <div class="card-hdr"><div class="card-title">Building Google Sheet</div></div>
+        <div class="prog-wrap"><div class="prog-bar" id="build-bar"></div></div>
+        <div class="prog-label" id="build-label">Starting…</div>
+        <div class="log" id="build-log"></div>
+        <div class="err-box" id="err-build"></div>
+        <div id="build-retry" style="display:none;margin-top:14px;gap:10px;">
+          <button class="btn primary" id="btn-retry">↻ Retry build</button>
+          <button class="btn" id="btn-back-review">← Back to review</button>
+        </div>
       </div>
-    </div>
+      <div class="card done-box" id="done-box" style="display:none;">
+        <div class="done-ico">✓</div>
+        <div class="done-title">Tracker built</div>
+        <div class="done-sub">Thumbnails are in your Drive under <span id="done-path" style="font-family:var(--mono);font-size:11px;"></span>. The sheet is private to you — share it with your team from inside Google Sheets.</div>
+        <div class="done-btns">
+          <a class="btn primary lg" id="sheet-link" href="#" target="_blank" rel="noopener">Open Google Sheet ↗</a>
+          <button class="btn lg" id="btn-add-cut">＋ Add another cut to this sheet</button>
+          <button class="btn lg" id="btn-new-proj">Start a new project</button>
+        </div>
+      </div>
+    </section>
 
-    <div class="card" id="sec-build" style="display:none;">
-      <div class="card-hdr"><div class="card-title" id="build-msg">Building Sheet...</div></div>
-      <div class="prog-wrap"><div class="prog-bar" id="build-bar" style="width:0%"></div></div>
-      <div class="log" id="build-log"></div>
-    </div>
-
-    <div class="card" id="sec-done" style="display:none;">
-      <div class="card-hdr"><div class="card-title">Complete</div></div>
-      <a href="#" id="sheet-link" target="_blank" class="btn btn-accent">Open VFX Sheet</a>
-    </div>
   </div></div>
 </div>
 
-<video id="hv" muted playsinline></video>
+<!-- ADD-SHOT MODAL -->
+<div class="modal-bg" id="modal-bg" role="dialog" aria-modal="true" aria-label="Add missed cut">
+  <div class="modal">
+    <div class="card-title" style="margin-bottom:12px;">Scrub to the first frame of the missed shot</div>
+    <video id="modal-vid" muted playsinline></video>
+    <input type="range" id="modal-scrub" min="0" max="1000" value="0" style="width:100%;accent-color:var(--accent);" aria-label="Scrub video">
+    <div style="display:flex;justify-content:center;gap:6px;margin-top:8px;">
+      <button class="btn" data-nudge="-1">−1 fr</button>
+      <button class="btn" data-nudge="1">+1 fr</button>
+    </div>
+    <div class="modal-tc" id="modal-tc">00:00:00:00</div>
+    <div class="modal-btns">
+      <button class="btn" id="modal-cancel">Cancel</button>
+      <button class="btn primary" id="modal-confirm">Add cut here</button>
+    </div>
+  </div>
+</div>
+
+<video id="vid" style="display:none;" muted playsinline></video>
+<canvas id="cv" style="display:none;"></canvas>
+<canvas id="cv-small" style="display:none;"></canvas>
 
 <script>
-// --- CONFIG & STATE ---
-const HARDCODED_CLIENT_ID = ''; 
-const S = { token:null, clientId:null, videoFile:null, videoUrl:null, shots:[], ssId:null, folderId:null, projName:'', cutLabel:'VFX_v1' };
+"use strict";
+/* ════════════════════════════════════════════════════════════════
+   VFX SHOT TRACKER — single-file app
+   Paste your OAuth Client ID below to skip the input field for the team.
+════════════════════════════════════════════════════════════════ */
+const HARDCODED_CLIENT_ID = "";
 
-// --- TIMECODE HELPER ---
-function secToTC(s, fps = 24) {
-  const f = Math.floor((s % 1) * fps);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = Math.floor(s % 60);
-  return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':') + ':' + String(f).padStart(2, '0');
-}
+const SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets";
+const THUMB_W = 200;              // thumbnail width (px) per spec
+const SAMPLE_STEP = 0.125;        // seconds between sampled frames (8 fps scan)
+const MIN_SHOT_LEN = 0.4;         // seconds — ignore cuts closer than this
+const ARTISTS = ["Jake","Jon","Simon"];
+const COMP_STATUSES = ["Pending","In Progress","Awaiting Feedback","Revision Inquiry","Canceled","Approved","Shipped","Screen Tracked","Needs Colored Footage"];
 
-// --- AUTH ---
-async function saveAndAuth() {
-  const cid = document.getElementById('cid-input').value.trim() || HARDCODED_CLIENT_ID;
-  if(!cid) return;
-  S.clientId = cid;
-  google.accounts.oauth2.initTokenClient({
-    client_id: S.clientId,
-    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
-    callback: r => { S.token = r.access_token; onAuthed(); }
-  }).requestAccessToken();
-}
+// header colors matching the template sheet
+const C_HDR    = {red:0.937,green:0.937,blue:0.937}; // #efefef
+const C_ORANGE = {red:0.976,green:0.796,blue:0.612}; // #f9cb9c
+const C_GREEN  = {red:0.714,green:0.843,blue:0.659}; // #b6d7a8
 
-function onAuthed() {
-  document.getElementById('sec-setup').style.display='none';
-  document.getElementById('sec-project').style.display='block';
-  document.getElementById('auth-pill').className='auth-pill in';
-  document.getElementById('auth-lbl').textContent='Connected';
-  setStep(2);
-}
-
-// --- DRAG & DROP ---
-document.getElementById('fi-v').onchange = e => {
-  const f = e.target.files[0];
-  S.videoFile = f; S.videoUrl = URL.createObjectURL(f);
-  document.getElementById('hv').src = S.videoUrl;
-  document.getElementById('dz-v').classList.add('filled');
-  document.getElementById('btn-detect').disabled = false;
+const S = {
+  token:null, tokenExp:0,
+  fps:24, projName:"", cutLabel:"",
+  videoFile:null, videoURL:null, duration:0,
+  edlCuts:null,                  // cut times (sec) from EDL/XML, or null
+  diffs:[],                      // [{t,score}] from scan (kept for re-threshold)
+  cuts:[],                       // current cut times (sec), excludes 0
+  shots:[],                      // [{id,inSec,outSec,startB64,endB64}]
+  ssId:null, sheetTabId:null, folderId:null, folderPath:"",
+  scanned:false,
 };
 
-// --- OPTIMIZED DETECTION (WEB WORKER) ---
-async function runDetection() {
-  const video = document.getElementById('hv');
-  setStep(3);
-  document.getElementById('proj-hint').textContent = "Analyzing pixels (Worker Active)...";
+const $ = id => document.getElementById(id);
+const vid = $('vid'), cv = $('cv'), cvs = $('cv-small');
 
-  // Using a Worker Blob so no external files are needed
-  const workerCode = `
-    onmessage = function(e) {
-      const { data, width, height, thresh } = e.data;
-      let diff = 0;
-      if (globalThis.prev) {
-        for (let i = 0; i < data.length; i += 4) {
-          diff += Math.abs(data[i] - prev[i]) + Math.abs(data[i+1] - prev[i+1]) + Math.abs(data[i+2] - prev[i+2]);
-        }
-      }
-      globalThis.prev = data;
-      postMessage(diff / (width * height * 3) > thresh);
-    };
-  `;
-  const blob = new Blob([workerCode], {type: 'application/javascript'});
-  const worker = new Worker(URL.createObjectURL(blob));
+/* ── UI helpers ───────────────────────────────────────────── */
+function setStep(n){
+  [1,2,3,4].forEach(i=>{
+    const el = $('ts'+i);
+    el.className = 'tstep'+(i<n?' done':i===n?' active':'');
+    el.querySelector('.tstep-n').textContent = i<n ? '✓' : String(i);
+    $('sec-'+i).classList.toggle('show', i===n);
+  });
+  $('sec-'+n).scrollIntoView({block:'start'});
+}
+function showErr(id,msg){const el=$(id);el.textContent=msg;el.style.display='block';}
+function hideErr(id){$(id).style.display='none';}
+function log(msg, cls){
+  const el = $('build-log');
+  const line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+  $('build-label').textContent = msg;
+}
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
-  const dur = video.duration;
-  const cuts = [0];
-  const canvas = document.createElement('canvas');
-  canvas.width = 64; canvas.height = 36;
-  const ctx = canvas.getContext('2d');
+/* ── Timecode ─────────────────────────────────────────────── */
+function secToTC(sec, fps){
+  fps = fps || S.fps;
+  const f = Math.round(sec * fps);
+  const fr = Math.round(fps);
+  const ff = f % fr, ss = Math.floor(f/fr)%60, mm = Math.floor(f/fr/60)%60, hh = Math.floor(f/fr/3600);
+  const p = n => String(n).padStart(2,'0');
+  return `${p(hh)}:${p(mm)}:${p(ss)}:${p(ff)}`;
+}
+function tcToSec(tc, fps){
+  const parts = tc.replace(/;/g,':').split(':').map(Number);
+  if(parts.length !== 4 || parts.some(isNaN)) return null;
+  const [hh,mm,ss,ff] = parts;
+  return hh*3600 + mm*60 + ss + ff/fps;
+}
+const todayStamp = () => {
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}_${p(d.getMonth()+1)}_${p(d.getDate())}`;
+};
+const sanitize = s => s.trim().replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,'_');
 
-  for (let t = 0.5; t < dur; t += 0.5) {
-    video.currentTime = t;
-    await new Promise(res => video.onseeked = res);
-    ctx.drawImage(video, 0, 0, 64, 36);
-    const imgData = ctx.getImageData(0,0,64,36).data;
-    
-    worker.postMessage({data: imgData, width: 64, height: 36, thresh: 25});
-    const isCut = await new Promise(res => worker.onmessage = e => res(e.data));
-    if (isCut) cuts.push(t);
+/* ── Auth ─────────────────────────────────────────────────── */
+let tokenClient = null;
+function clientId(){
+  return HARDCODED_CLIENT_ID || $('cid-input').value.trim();
+}
+function onToken(resp){
+  if(resp.error){ showErr('err-auth','Google sign-in failed: '+resp.error); return; }
+  S.token = resp.access_token;
+  S.tokenExp = Date.now() + (resp.expires_in-60)*1000;
+  try{ sessionStorage.setItem('vfx_tok', JSON.stringify({t:S.token,e:S.tokenExp})); }catch(e){}
+  setAuthUI(true);
+  updateContinue();
+}
+function setAuthUI(on){
+  const pill = $('auth-pill');
+  pill.className = 'auth-pill ' + (on?'in':'out');
+  $('auth-label').textContent = on ? 'Connected' : 'Not connected';
+  $('btn-connect').textContent = on ? '✓ Connected — switch account' : 'Connect Google account';
+}
+async function ensureToken(){
+  if(S.token && Date.now() < S.tokenExp) return;
+  return new Promise((resolve,reject)=>{
+    if(!tokenClient) return reject(new Error('Google sign-in not initialized'));
+    const prev = tokenClient.callback;
+    tokenClient.callback = (resp)=>{ tokenClient.callback = prev; onToken(resp); resp.error?reject(new Error(resp.error)):resolve(); };
+    tokenClient.requestAccessToken({prompt:''});
+  });
+}
+$('btn-connect').addEventListener('click', ()=>{
+  hideErr('err-auth');
+  const cid = clientId();
+  if(!cid){ showErr('err-auth','Enter your OAuth Client ID first.'); return; }
+  try{ localStorage.setItem('vfx_cid', cid); }catch(e){}
+  if(!window.google || !google.accounts){ showErr('err-auth','Google sign-in script has not loaded yet — check your connection and try again.'); return; }
+  if(!tokenClient || tokenClient._cid !== cid){
+    tokenClient = google.accounts.oauth2.initTokenClient({client_id:cid, scope:SCOPES, callback:onToken});
+    tokenClient._cid = cid;
   }
-  cuts.push(dur);
-  
-  S.shots = cuts.slice(0, -1).map((c, i) => ({
-    inSec: c, outSec: cuts[i+1], dur: cuts[i+1]-c, id: `SH${String(i*10).padStart(4, '0')}`
-  }));
+  tokenClient.requestAccessToken({prompt: S.token ? 'select_account' : ''});
+});
 
-  // Extraction
-  for(let s of S.shots) {
-    video.currentTime = s.inSec;
-    await new Promise(res => video.onseeked = res);
-    s.startB64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+/* restore session */
+(function(){
+  if(HARDCODED_CLIENT_ID){ $('cid-card').style.display='none'; }
+  else { try{ const c = localStorage.getItem('vfx_cid'); if(c) $('cid-input').value = c; }catch(e){} }
+  try{
+    const s = JSON.parse(sessionStorage.getItem('vfx_tok')||'null');
+    if(s && Date.now() < s.e){ S.token = s.t; S.tokenExp = s.e; setAuthUI(true); }
+  }catch(e){}
+})();
+
+/* ── Step 1 form ──────────────────────────────────────────── */
+function updateContinue(){
+  $('btn-to-2').disabled = !(S.token && $('proj-name').value.trim() && $('cut-label').value.trim());
+}
+['proj-name','cut-label'].forEach(id=>$(id).addEventListener('input', updateContinue));
+$('btn-to-2').addEventListener('click', ()=>{
+  S.projName = sanitize($('proj-name').value);
+  S.cutLabel = sanitize($('cut-label').value);
+  S.fps = parseFloat($('fps-sel').value);
+  setStep(2);
+});
+
+/* ── Step 2: file drops ───────────────────────────────────── */
+function wireDrop(dropId, inputId, onFile){
+  const drop = $(dropId), input = $(inputId);
+  drop.addEventListener('click', ()=>{ if(!drop.classList.contains('has')) input.click(); });
+  drop.addEventListener('dragover', e=>{e.preventDefault(); drop.classList.add('over');});
+  drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
+  drop.addEventListener('drop', e=>{
+    e.preventDefault(); drop.classList.remove('over');
+    if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', ()=>{ if(input.files[0]) onFile(input.files[0]); });
+}
+wireDrop('drop-vid','file-vid', f=>{
+  hideErr('err-media');
+  S.videoFile = f;
+  if(S.videoURL) URL.revokeObjectURL(S.videoURL);
+  S.videoURL = URL.createObjectURL(f);
+  vid.src = S.videoURL;
+  vid.addEventListener('loadedmetadata', function h(){
+    vid.removeEventListener('loadedmetadata', h);
+    S.duration = vid.duration;
+    $('drop-vid').classList.add('has');
+    $('drop-vid-main').textContent = f.name;
+    $('drop-vid-sub').textContent = `${(f.size/1048576).toFixed(1)} MB · ${secToTC(S.duration)} @ ${S.fps} fps`;
+    $('vid-badge').textContent = 'local only';
+    $('btn-analyze').disabled = false;
+  });
+  vid.addEventListener('error', function h(){
+    vid.removeEventListener('error', h);
+    showErr('err-media','This browser cannot decode that video. Try an H.264 MP4.');
+  });
+});
+wireDrop('drop-edl','file-edl', async f=>{
+  hideErr('err-media');
+  const text = await f.text();
+  let cuts = null;
+  if(/\.(xml|fcpxml)$/i.test(f.name) || text.trimStart().startsWith('<')) cuts = parseFCPXML(text);
+  else cuts = parseEDL(text);
+  if(!cuts || cuts.length === 0){
+    showErr('err-media','Could not read any events from that file. It will be ignored — auto-detection will be used instead.');
+    return;
   }
+  S.edlCuts = cuts;
+  $('drop-edl').classList.add('has');
+  $('drop-edl-main').textContent = f.name;
+  $('drop-edl-sub').textContent = `${cuts.length+1} shots from edit list — auto-detection disabled`;
+});
 
-  renderReview();
-  document.getElementById('sec-project').style.display='none';
-  document.getElementById('sec-review').style.display='block';
+/* ── EDL / XML parsing ────────────────────────────────────── */
+function parseEDL(text){
+  // CMX 3600: EVENT REEL TRACK TRANS  SRC-IN SRC-OUT  REC-IN REC-OUT
+  const re = /^\s*\d+\s+\S+\s+\S+\s+\S+(?:\s+\S+)?\s+([\d:;]{11})\s+([\d:;]{11})\s+([\d:;]{11})\s+([\d:;]{11})/;
+  const recIns = [];
+  let first = null;
+  for(const line of text.split(/\r?\n/)){
+    const m = line.match(re);
+    if(!m) continue;
+    const recIn = tcToSec(m[3], S.fps);
+    if(recIn === null) continue;
+    if(first === null) first = recIn;
+    recIns.push(recIn - first);
+  }
+  return recIns.filter(t=>t > 0.001).sort((a,b)=>a-b);
+}
+function parseFCPXML(text){
+  try{
+    const doc = new DOMParser().parseFromString(text,'text/xml');
+    if(doc.querySelector('parsererror')) return null;
+    // legacy FCP7 xmeml
+    let tb = doc.querySelector('sequence rate timebase');
+    const fps = tb ? parseFloat(tb.textContent) : S.fps;
+    let starts = [...doc.querySelectorAll('video track clipitem > start')]
+      .map(n=>parseFloat(n.textContent)/fps);
+    if(starts.length === 0){
+      // fcpxml 1.x: spine clips with offset attr like "3600s" or "86400/24s"
+      starts = [...doc.querySelectorAll('spine > clip, spine > asset-clip, spine > video')]
+        .map(n=>parseRational(n.getAttribute('offset')));
+      const base = Math.min(...starts.filter(v=>v!==null));
+      starts = starts.filter(v=>v!==null).map(v=>v-base);
+    }
+    return starts.filter(t=>t > 0.001).sort((a,b)=>a-b);
+  }catch(e){ return null; }
+}
+function parseRational(str){
+  if(!str) return null;
+  const m = str.match(/^(\d+)(?:\/(\d+))?s$/);
+  if(!m) return null;
+  return parseInt(m[1]) / (m[2]?parseInt(m[2]):1);
 }
 
-function renderReview() {
-  const grid = document.getElementById('shots-grid');
-  grid.innerHTML = S.shots.map(s => `
-    <div class="shot-card">
-      <div class="shot-hdr"><span>${s.id}</span><span>${s.dur.toFixed(1)}s</span></div>
-      <div class="fcell"><img src="data:image/jpeg;base64,${s.startB64}"></div>
-    </div>
-  `).join('');
-  document.getElementById('shot-count-tag').textContent = `${S.shots.length} shots`;
+/* ── Frame helpers ────────────────────────────────────────── */
+function seekTo(t){
+  return new Promise(res=>{
+    const h = ()=>{ vid.removeEventListener('seeked',h); res(); };
+    vid.addEventListener('seeked', h);
+    vid.currentTime = Math.min(Math.max(t,0), Math.max(S.duration-0.02, 0));
+  });
+}
+function grabSmall(){
+  const W=64, H=36;
+  cvs.width=W; cvs.height=H;
+  const ctx = cvs.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(vid,0,0,W,H);
+  const d = ctx.getImageData(0,0,W,H).data;
+  const luma = new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){
+    luma[i] = 0.299*d[i*4] + 0.587*d[i*4+1] + 0.114*d[i*4+2];
+  }
+  return luma;
+}
+function grabThumbB64(){
+  const ratio = vid.videoHeight/vid.videoWidth;
+  cv.width = THUMB_W; cv.height = Math.round(THUMB_W*ratio);
+  cv.getContext('2d').drawImage(vid,0,0,cv.width,cv.height);
+  return cv.toDataURL('image/jpeg',0.78).split(',')[1];
+}
+function lumaDiff(a,b){
+  let s=0;
+  for(let i=0;i<a.length;i++) s += Math.abs(a[i]-b[i]);
+  return s/a.length; // 0..255
 }
 
-// --- OPTIMIZED GOOGLE SHEET BUILD (BATCHING) ---
-async function buildSheet() {
-  setStep(4);
-  document.getElementById('sec-review').style.display='none';
-  document.getElementById('sec-build').style.display='block';
-  const log = (m, c) => {
-    const l = document.getElementById('build-log');
-    l.innerHTML += `<div class="ll-${c||'info'}">${m}</div>`;
-    l.scrollTop = l.scrollHeight;
-  };
+/* ── Step 2: analyze ──────────────────────────────────────── */
+$('sens').addEventListener('input', ()=>$('sens-val').textContent = $('sens').value);
+$('btn-analyze').addEventListener('click', async ()=>{
+  hideErr('err-media');
+  $('btn-analyze').disabled = true;
+  $('scan-prog').style.display = 'block';
+  try{
+    if(S.edlCuts){
+      S.cuts = S.edlCuts.filter(t=>t < S.duration - 0.05);
+      $('btn-resens').style.display = 'none';
+    } else {
+      await scanVideo();
+      S.cuts = thresholdCuts(parseInt($('sens').value));
+      $('btn-resens').style.display = '';
+      $('sens2').value = $('sens').value;
+      $('sens2-val').textContent = $('sens').value;
+    }
+    await rebuildShots(true);
+    setStep(3);
+  }catch(e){
+    showErr('err-media','Analysis failed: '+e.message);
+  }finally{
+    $('btn-analyze').disabled = false;
+    $('scan-prog').style.display = 'none';
+  }
+});
+async function scanVideo(){
+  S.diffs = [];
+  let prev = null;
+  const n = Math.floor(S.duration / SAMPLE_STEP);
+  for(let i=0;i<=n;i++){
+    const t = i*SAMPLE_STEP;
+    await seekTo(t);
+    const luma = grabSmall();
+    if(prev) S.diffs.push({t, score: lumaDiff(prev, luma)});
+    prev = luma;
+    if(i % 8 === 0){
+      $('scan-bar').style.width = (i/n*100)+'%';
+      $('scan-label').textContent = `Scanning ${secToTC(t)} / ${secToTC(S.duration)}`;
+      await sleep(0);
+    }
+  }
+  S.scanned = true;
+}
+function thresholdCuts(sens){
+  // sens 1..100  →  threshold ~58..8 (mean-luma-delta out of 255)
+  const thr = 58 - sens*0.5;
+  const cuts = [];
+  let last = -MIN_SHOT_LEN;
+  for(const d of S.diffs){
+    if(d.score >= thr && d.t - last >= MIN_SHOT_LEN){
+      cuts.push(d.t); last = d.t;
+    }
+  }
+  return cuts;
+}
 
-  try {
-    log("Creating Spreadsheet...");
-    const ss = await gapi('POST', 'https://sheets.googleapis.com/v4/spreadsheets', {
-      properties: { title: document.getElementById('proj-name').value + " VFX Tracker" },
-      sheets: [{ properties: { title: S.cutLabel, gridProperties: { frozenRowCount: 1 } } }]
+/* ── Shots ────────────────────────────────────────────────── */
+async function rebuildShots(captureAll){
+  const bounds = [0, ...S.cuts, S.duration];
+  const old = S.shots;
+  S.shots = [];
+  for(let i=0;i<bounds.length-1;i++){
+    const inSec = bounds[i], outSec = bounds[i+1];
+    // reuse already-captured frames when boundaries unchanged
+    const prev = old.find(s=>Math.abs(s.inSec-inSec)<0.001 && Math.abs(s.outSec-outSec)<0.001);
+    S.shots.push(prev || {inSec, outSec, startB64:null, endB64:null});
+  }
+  S.shots.forEach((s,i)=> s.id = 'SH' + String(i*10).padStart(4,'0'));
+  const missing = S.shots.filter(s=>!s.startB64);
+  let done = 0;
+  for(const s of missing){
+    $('scan-label').textContent = `Capturing ${s.id} (${++done}/${missing.length})`;
+    $('scan-bar').style.width = (done/missing.length*100)+'%';
+    await seekTo(s.inSec + 0.03);  s.startB64 = grabThumbB64();
+    await seekTo(Math.max(s.outSec - 0.05, s.inSec)); s.endB64 = grabThumbB64();
+  }
+  renderShots();
+}
+function renderShots(){
+  $('shot-count').textContent = S.shots.length;
+  const grid = $('shots-grid');
+  grid.innerHTML = '';
+  S.shots.forEach((s,idx)=>{
+    const card = document.createElement('div');
+    card.className = 'shot-card';
+    card.innerHTML = `
+      <div class="shot-thumbs">
+        <div class="shot-thumb-lbl"><img alt="${s.id} start frame" src="data:image/jpeg;base64,${s.startB64}"><span>START</span></div>
+        <div class="shot-thumb-lbl"><img alt="${s.id} end frame" src="data:image/jpeg;base64,${s.endB64}"><span>END</span></div>
+      </div>
+      <div class="shot-meta">
+        <div><div class="shot-id">${s.id}</div><div class="shot-tc">${secToTC(s.inSec)} → ${secToTC(s.outSec)}</div></div>
+        ${idx>0?`<button class="shot-del" title="Delete (merge into previous shot)" aria-label="Delete ${s.id}">✕</button>`:''}
+      </div>`;
+    const del = card.querySelector('.shot-del');
+    if(del) del.addEventListener('click', async ()=>{
+      // removing shot idx = removing the cut at its start
+      S.cuts = S.cuts.filter(t=>Math.abs(t - s.inSec) > 0.001);
+      await rebuildShots();
     });
-    S.ssId = ss.spreadsheetId;
+    grid.appendChild(card);
+  });
+}
 
-    log("Creating Drive Folder...");
-    const folder = await gapi('POST', 'https://www.googleapis.com/drive/v3/files', {
-      name: "Thumbnails_" + Date.now(), mimeType: 'application/vnd.google-apps.folder'
-    });
-    S.folderId = folder.id;
+/* re-threshold without rescanning */
+$('sens2').addEventListener('input', ()=>$('sens2-val').textContent = $('sens2').value);
+$('btn-resens').addEventListener('click', ()=>{
+  const row = $('resens-row');
+  row.style.display = row.style.display==='none'?'flex':'none';
+});
+$('btn-apply-sens').addEventListener('click', async ()=>{
+  S.cuts = thresholdCuts(parseInt($('sens2').value));
+  await rebuildShots();
+});
 
-    const allRows = [];
-    // Header
-    allRows.push(["SHOT ID", "TIMECODE", "THUMBNAIL", "STATUS", "NOTES"]);
+/* ── Add-shot modal ───────────────────────────────────────── */
+const mvid = $('modal-vid'), mscrub = $('modal-scrub');
+$('btn-add-shot').addEventListener('click', ()=>{
+  mvid.src = S.videoURL;
+  mscrub.value = 0;
+  $('modal-bg').classList.add('open');
+  mvid.addEventListener('loadedmetadata', function h(){
+    mvid.removeEventListener('loadedmetadata',h);
+    mvid.currentTime = 0;
+  });
+});
+mscrub.addEventListener('input', ()=>{
+  mvid.currentTime = (mscrub.value/1000) * S.duration;
+});
+mvid.addEventListener('timeupdate', ()=>{
+  $('modal-tc').textContent = secToTC(mvid.currentTime);
+});
+document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click', ()=>{
+  mvid.currentTime = Math.max(0, Math.min(S.duration-0.02, mvid.currentTime + parseInt(b.dataset.nudge)/S.fps));
+}));
+$('modal-cancel').addEventListener('click', ()=>$('modal-bg').classList.remove('open'));
+$('modal-bg').addEventListener('click', e=>{ if(e.target===$('modal-bg')) $('modal-bg').classList.remove('open'); });
+$('modal-confirm').addEventListener('click', async ()=>{
+  const t = mvid.currentTime;
+  $('modal-bg').classList.remove('open');
+  if(t > 0.05 && t < S.duration - 0.05 && !S.cuts.some(c=>Math.abs(c-t)<0.05)){
+    S.cuts = [...S.cuts, t].sort((a,b)=>a-b);
+    await rebuildShots();
+  }
+});
 
-    for(let i=0; i < S.shots.length; i++) {
-      const s = S.shots[i];
-      log(`Uploading Frame ${s.id}...`);
-      
-      const imgId = await uploadImg(s.startB64, s.id + ".jpg", S.folderId);
-      const thumbFormula = `=IMAGE("https://drive.google.com/uc?export=view&id=${imgId}")`;
-      
-      allRows.push([s.id, secToTC(s.inSec), thumbFormula, "PENDING", ""]);
-      
-      // OPTIMIZATION: Clear memory after upload
-      document.getElementById('build-bar').style.width = ((i/S.shots.length)*100) + "%";
+/* ── Step 4: BUILD ────────────────────────────────────────── */
+$('btn-to-4').addEventListener('click', ()=>{ setStep(4); build(); });
+
+async function build(){
+  hideErr('err-build');
+  $('build-log').innerHTML = '';
+  $('build-retry').style.display = 'none';
+  $('done-box').style.display = 'none';
+  $('build-card').style.display = '';
+  try{
+    await ensureToken();
+
+    log('Creating Drive folders…');
+    const root = await ensureFolder('VFX Tracker', null);
+    const proj = await ensureFolder(S.projName, root);
+    const dated = await ensureFolder(`${S.projName}_${todayStamp()}`, proj);
+    S.folderId = dated;
+    S.folderPath = `VFX Tracker / ${S.projName} / ${S.projName}_${todayStamp()}`;
+
+    if(!S.ssId){
+      log('Creating spreadsheet…');
+      const ss = await gapi('POST','https://sheets.googleapis.com/v4/spreadsheets',{
+        properties:{title:`${S.projName} — VFX Tracker`},
+        sheets:[{properties:{title:S.cutLabel}}]
+      });
+      if(!ss.spreadsheetId) throw new Error(ss.error?.message || 'Spreadsheet creation failed');
+      S.ssId = ss.spreadsheetId;
+      S.sheetTabId = ss.sheets[0].properties.sheetId;
+    } else {
+      log(`Adding tab "${S.cutLabel}"…`);
+      const props = await addTab(S.cutLabel);
+      S.sheetTabId = props.sheetId;
+      S.cutLabel = props.title;
     }
 
-    log("Sending Batch Update to Google...");
-    await gapi('PUT', `https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}/values/${S.cutLabel}!A1`, {
-      values: allRows
-    }, { valueInputOption: 'USER_ENTERED' });
+    log(`Uploading ${S.shots.length*2} thumbnails…`);
+    const rows = [
+      ["SHOT","ARTIST","THUMBNAIL","","PLATE PATH","SHOT DESCRIPTION / NOTES","COMP","RENDER FILE NAME","EDIT CHECK/ KEEPER OF CONFORM"],
+      ["","","START IMAGE","END IMAGE","","","","",""]
+    ];
+    let done = 0;
+    const queue = [...S.shots];
+    const results = new Map();
+    async function worker(){
+      while(queue.length){
+        const s = queue.shift();
+        const [a,b] = await Promise.all([
+          uploadImg(s.startB64, `${s.id}_start.jpg`),
+          uploadImg(s.endB64,   `${s.id}_end.jpg`)
+        ]);
+        results.set(s.id, [a,b]);
+        done++;
+        $('build-bar').style.width = (done/S.shots.length*92)+'%';
+        log(`Uploaded ${s.id} (${done}/${S.shots.length})`);
+      }
+    }
+    await Promise.all([worker(),worker(),worker(),worker()]);
 
-    log("Done!", "ok");
-    document.getElementById('sec-done').style.display='block';
-    document.getElementById('sheet-link').href = `https://docs.google.com/spreadsheets/d/${S.ssId}/edit`;
-  } catch(e) { log(e.message, 'err'); }
+    for(const s of S.shots){
+      const [aId,bId] = results.get(s.id);
+      rows.push([
+        s.id, "",
+        `=IMAGE("https://drive.google.com/thumbnail?id=${aId}&sz=w600")`,
+        `=IMAGE("https://drive.google.com/thumbnail?id=${bId}&sz=w600")`,
+        "", "", "Pending", "", ""
+      ]);
+    }
+
+    log('Writing rows…');
+    const wr = await gapi('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}/values/${encodeURIComponent(S.cutLabel)}!A1`,
+      {values:rows},{valueInputOption:'USER_ENTERED'});
+    if(wr.error) throw new Error(wr.error.message);
+
+    log('Formatting (colors, dropdowns, sizing)…');
+    const fr = await gapi('POST',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}:batchUpdate`,
+      {requests: formatRequests(S.sheetTabId, S.shots.length)});
+    if(fr.error) throw new Error(fr.error.message);
+
+    $('build-bar').style.width = '100%';
+    log('Done!','ok');
+    $('done-path').textContent = S.folderPath;
+    $('sheet-link').href = `https://docs.google.com/spreadsheets/d/${S.ssId}/edit`;
+    $('build-card').style.display = 'none';
+    $('done-box').style.display = 'block';
+  }catch(e){
+    log('Error: '+e.message,'err');
+    showErr('err-build', e.message);
+    $('build-retry').style.display = 'flex';
+  }
+}
+$('btn-retry').addEventListener('click', build);
+$('btn-back-review').addEventListener('click', ()=>setStep(3));
+async function addTab(title){
+  try{
+    const r = await gapi('POST',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}:batchUpdate`,
+      {requests:[{addSheet:{properties:{title}}}]});
+    return r.replies[0].addSheet.properties;
+  }catch(e){
+    if(/already exists/i.test(e.message)) {
+      const r = await gapi('POST',`https://sheets.googleapis.com/v4/spreadsheets/${S.ssId}:batchUpdate`,
+        {requests:[{addSheet:{properties:{title: title+'_'+Date.now().toString(36).slice(-4)}}}]});
+      return r.replies[0].addSheet.properties;
+    }
+    throw e;
+  }
 }
 
-// --- HELPERS ---
-async function gapi(method, url, body, params) {
+/* sheet formatting matching the template */
+function formatRequests(sheetId, nShots){
+  const lastData = 2 + nShots; // rows are 0-indexed end-exclusive in API
+  const merge = (r1,r2,c1,c2)=>({mergeCells:{range:{sheetId,startRowIndex:r1,endRowIndex:r2,startColumnIndex:c1,endColumnIndex:c2},mergeType:'MERGE_ALL'}});
+  const bg = (r1,r2,c1,c2,color)=>({repeatCell:{
+    range:{sheetId,startRowIndex:r1,endRowIndex:r2,startColumnIndex:c1,endColumnIndex:c2},
+    cell:{userEnteredFormat:{backgroundColor:color}}, fields:'userEnteredFormat.backgroundColor'}});
+  const colW = (c1,c2,px)=>({updateDimensionProperties:{range:{sheetId,dimension:'COLUMNS',startIndex:c1,endIndex:c2},properties:{pixelSize:px},fields:'pixelSize'}});
+  return [
+    // header merges: A1:A2, B1:B2, C1:D1 (THUMBNAIL), E..I vertical
+    merge(0,2,0,1), merge(0,2,1,2), merge(0,1,2,4),
+    merge(0,2,4,5), merge(0,2,5,6), merge(0,2,6,7), merge(0,2,7,8), merge(0,2,8,9),
+    // header style
+    {repeatCell:{range:{sheetId,startRowIndex:0,endRowIndex:2,startColumnIndex:0,endColumnIndex:9},
+      cell:{userEnteredFormat:{backgroundColor:C_HDR,horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE',wrapStrategy:'WRAP',
+        textFormat:{bold:true,fontSize:10}}},
+      fields:'userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,wrapStrategy,textFormat)'}},
+    // COMP header orange like the template
+    bg(0,2,6,7,C_ORANGE),
+    // data tints: A+B orange, H green
+    bg(2,lastData,0,2,C_ORANGE),
+    bg(2,lastData,7,8,C_GREEN),
+    // center shot id + comp columns
+    {repeatCell:{range:{sheetId,startRowIndex:2,endRowIndex:lastData,startColumnIndex:0,endColumnIndex:1},
+      cell:{userEnteredFormat:{horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE',textFormat:{bold:true}}},
+      fields:'userEnteredFormat(horizontalAlignment,verticalAlignment,textFormat)'}},
+    // dropdown: Artist (B)
+    {setDataValidation:{range:{sheetId,startRowIndex:2,endRowIndex:lastData,startColumnIndex:1,endColumnIndex:2},
+      rule:{condition:{type:'ONE_OF_LIST',values:ARTISTS.map(v=>({userEnteredValue:v}))},showCustomUi:true,strict:false}}},
+    // dropdown: Comp status (G)
+    {setDataValidation:{range:{sheetId,startRowIndex:2,endRowIndex:lastData,startColumnIndex:6,endColumnIndex:7},
+      rule:{condition:{type:'ONE_OF_LIST',values:COMP_STATUSES.map(v=>({userEnteredValue:v}))},showCustomUi:true,strict:false}}},
+    // tall data rows for thumbnails
+    {updateDimensionProperties:{range:{sheetId,dimension:'ROWS',startIndex:2,endIndex:lastData},properties:{pixelSize:112},fields:'pixelSize'}},
+    // column widths
+    colW(0,1,70), colW(1,2,95), colW(2,4,210), colW(4,5,160), colW(5,6,260), colW(6,7,140), colW(7,8,170), colW(8,9,180),
+    // freeze the two header rows
+    {updateSheetProperties:{properties:{sheetId,gridProperties:{frozenRowCount:2}},fields:'gridProperties.frozenRowCount'}}
+  ];
+}
+
+/* ── Google API helpers ───────────────────────────────────── */
+async function gapi(method, url, body, params){
+  await ensureToken();
   const u = params ? url + '?' + new URLSearchParams(params) : url;
   const r = await fetch(u, {
-    method, headers: { 'Authorization': 'Bearer ' + S.token, 'Content-Type': 'application/json' },
+    method,
+    headers:{'Authorization':'Bearer '+S.token,'Content-Type':'application/json'},
     body: body ? JSON.stringify(body) : null
   });
-  return r.json();
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error?.message || `${method} ${r.status}`);
+  return d;
 }
-
-async function uploadImg(b64, name, parent) {
-  const meta = JSON.stringify({ name, parents: [parent] });
-  const blob = new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], {type: 'image/jpeg'});
+async function ensureFolder(name, parentId){
+  const q = [
+    `name='${name.replace(/'/g,"\\'")}'`,
+    "mimeType='application/vnd.google-apps.folder'",
+    "trashed=false",
+    parentId ? `'${parentId}' in parents` : "'root' in parents"
+  ].join(' and ');
+  const found = await gapi('GET','https://www.googleapis.com/drive/v3/files',null,{q, fields:'files(id,name)', pageSize:'1'});
+  if(found.files && found.files.length) return found.files[0].id;
+  const made = await gapi('POST','https://www.googleapis.com/drive/v3/files',{
+    name, mimeType:'application/vnd.google-apps.folder', parents: parentId?[parentId]:undefined
+  });
+  if(!made.id) throw new Error('Could not create folder '+name);
+  return made.id;
+}
+async function uploadImg(b64, name){
+  await ensureToken();
+  const meta = JSON.stringify({name, parents:[S.folderId]});
+  const blob = new Blob([Uint8Array.from(atob(b64), c=>c.charCodeAt(0))],{type:'image/jpeg'});
   const form = new FormData();
-  form.append('metadata', new Blob([meta], { type: 'application/json' }));
+  form.append('metadata', new Blob([meta],{type:'application/json'}));
   form.append('file', blob);
-  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST', headers: { 'Authorization': 'Bearer ' + S.token }, body: form
+  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+    method:'POST', headers:{'Authorization':'Bearer '+S.token}, body:form
   });
   const d = await r.json();
-  // Set permission so =IMAGE formula works
-  await fetch(`https://www.googleapis.com/drive/v3/files/${d.id}/permissions`, {
-    method:'POST', headers:{'Authorization':'Bearer '+S.token,'Content-Type':'application/json'},
-    body:JSON.stringify({type:'anyone',role:'reader'})
-  });
+  if(!d.id) throw new Error(d.error?.message || 'Upload failed for '+name);
+  // "anyone with link" so =IMAGE() renders for the whole team
+  await gapi('POST',`https://www.googleapis.com/drive/v3/files/${d.id}/permissions`,{type:'anyone',role:'reader'});
   return d.id;
 }
 
-function setStep(n){[1,2,3,4].forEach(i=>{const el=document.getElementById('ts'+i);el.className='tstep'+(i<n?' done':i===n?' active':'');});}
+/* ── Done-screen actions ──────────────────────────────────── */
+$('btn-add-cut').addEventListener('click', ()=>{
+  // keep ssId + project; reset cut + media + shots
+  S.cutLabel = ''; S.videoFile = null; S.edlCuts = null;
+  S.diffs = []; S.cuts = []; S.shots = []; S.scanned = false;
+  if(S.videoURL){ URL.revokeObjectURL(S.videoURL); S.videoURL = null; }
+  resetMediaUI();
+  $('cut-label').value = '';
+  setStep(1);
+  $('cut-label').focus();
+});
+$('btn-new-proj').addEventListener('click', ()=>{
+  S.ssId = null; S.sheetTabId = null;
+  S.projName = ''; S.cutLabel = ''; S.videoFile = null; S.edlCuts = null;
+  S.diffs = []; S.cuts = []; S.shots = []; S.scanned = false;
+  if(S.videoURL){ URL.revokeObjectURL(S.videoURL); S.videoURL = null; }
+  resetMediaUI();
+  $('proj-name').value = ''; $('cut-label').value = '';
+  updateContinue();
+  setStep(1);
+});
+function resetMediaUI(){
+  $('drop-vid').classList.remove('has');
+  $('drop-vid-main').textContent = 'Drop video here, or click to browse';
+  $('drop-vid-sub').textContent = 'MP4 / MOV / WebM — analyzed in your browser only';
+  $('vid-badge').textContent = '';
+  $('drop-edl').classList.remove('has');
+  $('drop-edl-main').textContent = 'Drop EDL or XML here, or click to browse';
+  $('drop-edl-sub').textContent = 'CMX 3600 .edl or Final Cut Pro .xml — skip to use auto-detection';
+  $('file-vid').value = ''; $('file-edl').value = '';
+  $('btn-analyze').disabled = true;
+  $('shots-grid').innerHTML = '';
+}
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
